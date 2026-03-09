@@ -16,7 +16,7 @@ const Version = {
     major,
     minor,
     patch,
-  }) {
+  }={}) {
     return {
       moniker: moniker ?? "hg",
       major  : major   ??   0,
@@ -218,7 +218,180 @@ const Vector4 = {
   }
 }
 
+const Canvas = {
+  get __default__() {
+    const c = document.createElement("canvas")
+      c.style.position = "absolute"
+      c.style.top      = "0px"
+      c.style.left     = "0px"
+      c.style.width    = "100dvw"
+      c.style.height   = "100dvh"
+    document.body.appendChild(c)
 
+    delete  Canvas.__default__
+    return (Canvas.__default__ = c)
+  }
+}
+
+/**
+ * @typedef hgStage
+ * 
+ * @property {boolean               } configureDebug
+ * @property {number                } configureWidth
+ * @property {number                } configureHeight
+ * @property {string                } configureLogicalBackground
+ * @property {string                } configureVirtualBackground
+ * @property {number                } [configureScaleIncrement]
+ * @property {ImageSmoothingQuality } [configureImageSmoothing]
+ * 
+ * @property {HTMLCanvasElement                } logicalCanvasElement
+ * @property {OffscreenCanvas                  } virtualCanvasElement
+ * @property {CanvasRenderingContext2D         } logicalCanvasContext
+ * @property {OffscreenCanvasRenderingContext2D} virtualCanvasContext
+ * @property {number                           } virtualScale
+ */
+
+const Stage = {
+  /** @returns {hgStage} */
+  new({
+    dbg, // configureDebug
+    w  , // configureWidth
+    h  , // configureHeight
+    lbg, // configureLogicalBackground
+    vbg, // configureVirtualBackground
+    si , // configureScaleIncrement
+    is , // configureImageSmoothing
+    c  , // logicalCanvasElement
+  }={}) {
+    const configureDebug             = dbg ?? false
+    const configureWidth             = w   ??     0
+    const configureHeight            = h   ??     0
+    const configureLogicalBackground = lbg ?? "black"
+    const configureVirtualBackground = vbg ?? "white"
+    const configureScaleIncrement    = si
+    const configureImageSmoothing    = is
+
+    /** @type {HTMLCanvasElement} */
+    const logicalCanvasElement = c ?? Canvas.__default__
+    const virtualCanvasElement  = new OffscreenCanvas(
+      configureWidth  || logicalCanvasElement.width, 
+      configureHeight || logicalCanvasElement.height
+    )
+
+    const logicalCanvasContext = logicalCanvasElement.getContext("2d")
+    const virtualCanvasContext = virtualCanvasElement.getContext("2d")
+
+    // configure scale
+    let virtualScale = Math.min(
+      logicalCanvasElement.width  / virtualCanvasElement.width,
+      logicalCanvasElement.height / virtualCanvasElement.height
+    )
+    if (configureScaleIncrement)
+      virtualScale = Math.floor(virtualScale / configureScaleIncrement) * configureScaleIncrement
+
+    // configure image smoothing
+    logicalCanvasContext.imageSmoothingEnabled = !!configureImageSmoothing
+    virtualCanvasContext.imageSmoothingEnabled = !!configureImageSmoothing
+    if (configureImageSmoothing) {
+      logicalCanvasContext.imageSmoothingQuality = configureImageSmoothing
+      virtualCanvasContext.imageSmoothingQuality = configureImageSmoothing
+    }
+
+    const stage = {
+      configureDebug,
+      configureWidth,
+      configureHeight,
+      configureLogicalBackground,
+      configureVirtualBackground,
+      configureScaleIncrement,
+      configureImageSmoothing,
+      logicalCanvasElement,
+      virtualCanvasElement,
+      logicalCanvasContext,
+      virtualCanvasContext,
+      virtualScale,
+    }
+
+    return stage
+  },
+
+  /** @param {hgStage} stage */
+  getLogicalSize(stage) {
+    return Vector2.new(
+      stage.logicalCanvasElement.width,
+      stage.logicalCanvasElement.height
+    )
+  },
+
+  /** @param {hgStage} stage */
+  getVirtualSize(stage) {
+    return Vector2.new(
+      stage.virtualCanvasElement.width,
+      stage.virtualCanvasElement.height
+    )
+  },
+}
+
+/** @param {hgStage} stage */
+function Stage__resize__(stage) {
+  // compute new size
+  const w = stage.logicalCanvasElement.getBoundingClientRect().width
+  const h = stage.logicalCanvasElement.getBoundingClientRect().height
+  // queue a resize
+}
+
+/** 
+ * @param {hgStage} stage 
+ * @param {number } t
+ * @param {number } dt
+ */
+function Stage__update__(stage, t, dt) {
+
+}
+
+/** 
+ * @param {hgStage} stage
+ * @param {number } t
+ * @param {number } dt
+ */
+function Stage__render__(stage, t, dt) {
+
+}
+
+/** 
+ * @param {hgStage} stage 
+ * @param {number } t0
+ * @param {number } t1
+ * @param {number } t2
+ */
+function Stage__loop__(stage, t0, t1, t2) {
+
+}
+
+
+const Event = {
+
+}
+
+function Event__queue__(bus, a) {
+
+}
+
+function Event__flush__(bus, a) {
+
+}
+
+function Event__onListen__  (bus, a) {
+
+}
+
+function Event__onDeafen__  (bus, a) {
+
+}
+
+function Event__onDispatch__(bus, a) {
+
+}
 
 const hg = {
   Version,
@@ -228,6 +401,8 @@ const hg = {
   Vector2,
   Vector3,
   Vector4,
+
+  Stage,
 }
 
 window.hg = hg
