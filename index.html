@@ -8,13 +8,9 @@
     <script>
       console.log(hg.Version.toString(hg.VERSION))
 
-      const tree = hg.Event.Tree.new()
+      const stage = hg.Stage.new({w: 256, h: 256})
 
-      hg.Event.Tree.listen(tree, "foo", (what) => console.log(what), {path: "a/b/c"})
-      hg.Event.Tree.dispatch(tree, "foo", "bar")
-      hg.Event.Tree.dispatch(tree, "foo", "baz")
-      hg.Event.Tree.dispatch(tree, "oof", "rab")
-      hg.Event.Tree.poll(tree)
+      console.log(JSON.stringify(stage, null, 2))
       
 
 

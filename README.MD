@@ -1,6 +1,8 @@
 ### What is hg?
 
-hg is a tiny (one-file), 2d game engine, written in vanilla js. No frameworks, no bundlers, no package managers. 
+hg is a tiny (one-file), 2d game engine, written in vanilla js. No frameworks, no bundlers, no package managers.
+
+All public facing types in hg are json-safe, meaning that the entire state of the engine can be easily inspected and serialized.
 
 ### Why is hg?
 

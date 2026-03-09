@@ -623,14 +623,19 @@ const Event = {
  * @property {number                } [configureScaleIncrement]
  * @property {ImageSmoothingQuality } [configureImageSmoothing]
  * 
- * @property {HTMLCanvasElement                } logicalCanvasElement
- * @property {OffscreenCanvas                  } virtualCanvasElement
- * @property {CanvasRenderingContext2D         } logicalCanvasContext
- * @property {OffscreenCanvasRenderingContext2D} virtualCanvasContext
- * @property {number                           } virtualScale
+ * @property {hgId<HTMLCanvasElement>                } logicalCanvasElement
+ * @property {hgId<OffscreenCanvas>                  } virtualCanvasElement
+ * @property {hgId<CanvasRenderingContext2D>         } logicalCanvasContext
+ * @property {hgId<OffscreenCanvasRenderingContext2D>} virtualCanvasContext
+ * @property {number                                 } virtualScale
+ * 
+ * @property {hgEventTree} eventTree
  */
 
 const Stage = {
+  /** @type {"stage:resize"} */
+  ON_RESIZE: "stage:resize",
+
   /** @returns {hgStage} */
   new({
     dbg, // configureDebug
@@ -676,6 +681,9 @@ const Stage = {
       virtualCanvasContext.imageSmoothingQuality = configureImageSmoothing
     }
 
+    const eventTree = Event.Tree.new()
+
+    
     const stage = {
       configureDebug,
       configureWidth,
@@ -684,75 +692,205 @@ const Stage = {
       configureVirtualBackground,
       configureScaleIncrement,
       configureImageSmoothing,
-      logicalCanvasElement,
-      virtualCanvasElement,
-      logicalCanvasContext,
-      virtualCanvasContext,
+      logicalCanvasElement: Id.acquire(logicalCanvasElement),
+      virtualCanvasElement: Id.acquire(virtualCanvasElement),
+      logicalCanvasContext: Id.acquire(logicalCanvasContext),
+      virtualCanvasContext: Id.acquire(virtualCanvasContext),
       virtualScale,
+      eventTree
     }
+    
+    new ResizeObserver(() => Stage.__resize__(stage)).observe(logicalCanvasElement)
+
+    Stage.listen(stage, Stage.ON_RESIZE, (size) => Stage.__onResize__(stage, size))
+
+    requestAnimationFrame(
+      t0 => requestAnimationFrame(
+        t1 => requestAnimationFrame(
+          t2 => Stage.__loop__(stage, t0, t1, t2)
+        )
+      )
+    )
 
     return stage
   },
 
+  /**
+   * @template T
+   * @param {hgStage          } stage
+   * @param {string           } when
+   * @param {hgEventHandler<T>} then
+   * @param {{path ?: string, defer?: boolean}}
+   */
+  listen(stage, when, then, {path, defer}={}) {
+    Event.Tree.listen(stage.eventTree, when, then, {path, defer})
+  },
+
+  /**
+   * @template T
+   * @param {hgStage                } stage
+   * @param {string                 } when
+   * @param {hgId<hgEventHandler<T>>} then
+   * @param {{path ?: string, defer?: boolean}}
+   */
+  deafen(stage, when, then, {path, defer}={}) {
+    Event.Tree.deafen(stage.eventTree, when, then, {path, defer})
+  },
+
+  /**
+   * @template T
+   * @param {hgStage            } stage
+   * @param {string             } when
+   * @param {T                  } what
+   * @param {{path ?: string, defer?: boolean}}
+   */
+  dispatch(stage, when, what, {path, defer}={}) {
+    Event.Tree.dispatch(stage.eventTree, when, what, {path, defer})
+  },
+
+  /** @param {hgStage} stage */
+  poll(stage) {
+    Event.Tree.poll(stage.eventTree)
+  },
+
+  /** @param {hgStage} stage */
+  getLogicalCanvasElement(stage) {
+    return Id.resolve(stage.logicalCanvasElement)
+  },
+
+  /** @param {hgStage} stage */
+  getVirtualCanvasElement(stage) {
+    return Id.resolve(stage.virtualCanvasElement)
+  },
+
+  /** @param {hgStage} stage */
+  getLogicalCanvasContext(stage) {
+    return Id.resolve(stage.logicalCanvasContext)
+  },
+
+  /** @param {hgStage} stage */
+  getVirtualCanvasContext(stage) {
+    return Id.resolve(stage.virtualCanvasContext)
+  },
+
   /** @param {hgStage} stage */
   getLogicalSize(stage) {
+    const lce = Stage.getLogicalCanvasElement(stage)
     return Vector2.new(
-      stage.logicalCanvasElement.width,
-      stage.logicalCanvasElement.height
+      lce.width,
+      lce.height
     )
   },
 
   /** @param {hgStage} stage */
   getVirtualSize(stage) {
+    const vce = Stage.getVirtualCanvasElement(stage)
     return Vector2.new(
-      stage.virtualCanvasElement.width,
-      stage.virtualCanvasElement.height
+      vce.width,
+      vce.height
     )
   },
+
+  /** @param {hgStage} stage */
+  __resize__(stage) {
+    const lce = Stage.getLogicalCanvasElement(stage)
+    const w   = lce.getBoundingClientRect().width
+    const h   = lce.getBoundingClientRect().height
+    Stage.dispatch(stage, Stage.ON_RESIZE, [w, h])
+  },
+
+  /** 
+   * @param {hgStage} stage
+   * @param {Vector2}
+   */
+  __onResize__(stage, [w, h]) {
+    const lce = Stage.getLogicalCanvasElement(stage)
+    lce.width  = w
+    lce.height = h
+    
+    const vce = new OffscreenCanvas(
+      stage.configureWidth  || w, 
+      stage.configureHeight || h
+    )
+    Id.release(stage.virtualCanvasElement)
+    stage.virtualCanvasElement = Id.acquire(vce)
+
+    const lcc = lce.getContext("2d")
+    const vcc = vce.getContext("2d")
+    Id.release(stage.logicalCanvasContext)
+    Id.release(stage.virtualCanvasContext)
+    stage.logicalCanvasContext = Id.acquire(lcc)
+    stage.virtualCanvasContext = Id.acquire(vcc)
+
+    lcc.imageSmoothingEnabled = !!stage.configureImageSmoothing
+    vcc.imageSmoothingEnabled = !!stage.configureImageSmoothing
+    if (stage.configureImageSmoothing) {
+      lcc.imageSmoothingQuality = stage.configureImageSmoothing
+      vcc.imageSmoothingQuality = stage.configureImageSmoothing
+    }
+
+    stage.virtualScale = Math.min(
+      lce.width  / vce.width,
+      lce.height / vce.height
+    )
+    if (stage.configureScaleIncrement)
+      stage.virtualScale = Math.floor(stage.virtualScale / stage.configureScaleIncrement) * stage.configureScaleIncrement
+  },
+
+  /** 
+   * @param {hgStage} stage 
+   * @param {number } t
+   * @param {number } dt
+   */
+  __update__(stage, t, dt) {
+    Stage.poll(stage)
+  },
+
+  /** 
+   * @param {hgStage} stage
+   * @param {number } t
+   * @param {number } dt
+   */
+  __render__(stage, t, dt) {
+    const [lw, lh] = Stage.getLogicalSize(stage)
+    const [vw, vh] = Stage.getVirtualSize(stage)
+    const  vs      = stage.virtualScale
+
+    const h = Stage.getLogicalCanvasContext(stage)
+    const g = Stage.getVirtualCanvasContext(stage)
+
+    h.resetTransform()
+    h.fillStyle = stage.configureLogicalBackground
+    h.fillRect(0, 0, lw, lh)
+
+    g.resetTransform()
+    g.fillStyle = stage.configureVirtualBackground
+    g.fillRect(0, 0, vw, vh)
+
+    h.translate(
+      (lw - vw * vs) / 2,
+      (lh - vh * vs) / 2
+    )
+    h.scale(vs, vs)
+    h.drawImage(g.canvas, 0, 0)
+  },
+
+  /** 
+   * @param {hgStage} stage 
+   * @param {number } t0
+   * @param {number } t1
+   * @param {number } t2
+   */
+  __loop__(stage, t0, t1, t2) {
+    const t  = (t2 - t0) / 1000
+    const dt = (t2 - t1) / 1000
+
+    Stage.__update__(stage, t, dt)
+    Stage.__render__(stage, t, dt)
+
+    requestAnimationFrame(t3 => Stage.__loop__(stage, t0, t2, t3))
+  },
 }
-
-/** @param {hgStage} stage */
-function Stage__resize__(stage) {
-  // compute new size
-  const w = stage.logicalCanvasElement.getBoundingClientRect().width
-  const h = stage.logicalCanvasElement.getBoundingClientRect().height
-  // queue a resize
-}
-
-/** 
- * @param {hgStage} stage 
- * @param {number } t
- * @param {number } dt
- */
-function Stage__update__(stage, t, dt) {
-
-}
-
-/** 
- * @param {hgStage} stage
- * @param {number } t
- * @param {number } dt
- */
-function Stage__render__(stage, t, dt) {
-
-}
-
-/** 
- * @param {hgStage} stage 
- * @param {number } t0
- * @param {number } t1
- * @param {number } t2
- */
-function Stage__loop__(stage, t0, t1, t2) {
-
-}
-
-
-
-
-
-
-
 
 const hg = {
   Version,
