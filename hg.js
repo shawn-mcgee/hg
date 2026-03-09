@@ -335,8 +335,8 @@ const DISPATCH = "__dispatch__"
  * @typedef hgEventAction__Deafen__
  * @property {typeof DEAFEN          } action
  * @property {string                 } path
- * @property {string                 } when
- * @property {hgId<hgEventHandler<T>>} then
+ * @property {string                 } [when]
+ * @property {hgId<hgEventHandler<T>>} [then]
  */
 
 /**
@@ -369,7 +369,7 @@ const Event = {
      * @param {string                 } path
      */
     __requestNode__(root, path) {
-      for (let part of path.split("/")) {
+      for (let part of path.split("/").filter(Boolean)) {
         let node = root?.children?.[part]
         if (!node) return
         root = node
@@ -383,7 +383,7 @@ const Event = {
      * @param {string     } path 
      */
     __requireNode__(root, path) {
-      for (let part of path.split("/")) {
+      for (let part of path.split("/").filter(Boolean)) {
         let node = root.children[part]
         if (!node) root.children[part] = (
           node = Event.Node.new()
@@ -415,9 +415,20 @@ const Event = {
       return list
     },
 
+    /** @param {hgEventNode} root */
     __releaseNode__(root) {
+      Object.values(root.children).forEach(node => {
+        Event.Node.__releaseNode__(node)
+      })
 
+      Object.values(root.handlers).forEach(list => {
+        list.splice(0).forEach(id => {
+          Id.release(id)
+        })
+      })
 
+      root.children = { }
+      root.handlers = { }
     },
   },
 
@@ -438,18 +449,24 @@ const Event = {
      * @param {{path ?: string, defer?: boolean}}
      */
     listen(tree, when, then, {path, defer}={}) {
-
+      /** @type {hgEventAction__Listen__<T>} */ 
+      const a = { action: LISTEN, when, then: Id.acquire(then), path: path ?? "" }
+      if (defer ?? true) Event.Tree.__queue__(tree, a)
+      else               Event.Tree.__flush__(tree, a)
     },
 
     /**
      * @template T
      * @param {hgEventTree            } tree
-     * @param {string                 } when 
-     * @param {hgId<hgEventHandler<T>>} then
+     * @param {string                 } [when] 
+     * @param {hgId<hgEventHandler<T>>} [then]
      * @param {{path ?: string, defer?: boolean}}
      */
     deafen(tree, when, then, {path, defer}={}) {
-
+      /** @type {hgEventAction__Deafen__<T>} */ 
+      const a = { action: DEAFEN, when, then, path: path ?? "" }
+      if (defer ?? true) Event.Tree.__queue__(tree, a)
+      else               Event.Tree.__flush__(tree, a)
     },
 
     /**
@@ -460,13 +477,16 @@ const Event = {
      * @param {{path ?: string, defer?: boolean}}
      */
     dispatch(tree, when, what, {path, defer}={}) {
-
+      /** @type {hgEventAction__Dispatch__<T>} */ 
+      const a = { action: DISPATCH, when, what, path: path ?? "" }
+      if (defer ?? true) Event.Tree.__queue__(tree, a)
+      else               Event.Tree.__flush__(tree, a)
     },
 
     /** @param {hgEventTree} tree */
     poll(tree) {
       tree.pending.splice(0).forEach(
-        a => Event.__flush__(tree, a)
+        a => Event.Tree.__flush__(tree, a)
       )
     },
 
@@ -484,10 +504,10 @@ const Event = {
      */
     __flush__(tree, a) {
       switch (a.action) {
-        case LISTEN  : Event.__onListen__  (tree, a); break;
-        case DEAFEN  : Event.__onDeafen__  (tree, a); break;
-        case DISPATCH: Event.__onDispatch__(tree, a); break;
-        default: throw new Error(`[Event.flush] unknown action '${a.action}'.`)
+        case LISTEN  : Event.Tree.__onListen__  (tree, a); break;
+        case DEAFEN  : Event.Tree.__onDeafen__  (tree, a); break;
+        case DISPATCH: Event.Tree.__onDispatch__(tree, a); break;
+        default: throw new Error(`[Event.Tree.__flush__] unknown action '${a.action}'.`)
       }
     },
 
@@ -498,8 +518,10 @@ const Event = {
     __onListen__  (tree, a) {
       const node = Event.Node.__requireNode__(tree.root, a.path)
       const list = Event.Node.__requireHandlers__(node , a.when)
-      if (list.includes(a.then))
-        console.warn(`[Event.listen] handler with id '${a.then}' already exists.`)
+      if (list.includes(a.then)) {
+        console.warn(`[Event.Tree.__onListen__] handler with id '${a.then}' already exists.`)
+        return
+      }
       list.push(a.then)
     },
 
@@ -508,8 +530,34 @@ const Event = {
      * @param {hgEventAction__Deafen__<any>} a
      */
     __onDeafen__  (tree, a) {
-      
+      // deafen one handler with a given 'when' and 'then'
+             if (a.when !== undefined && a.then !== undefined) {
+        const node = Event.Node.__requestNode__(tree.root, a.path)
+        const list = Event.Node.__requestHandlers__(node , a.when)
+        if (list?.includes(a.then))
+          Id.release(list.splice(list.indexOf(a.then), 1)[0])
 
+      // deafen all handlers for a given 'when'
+      } else if(a.when !== undefined && a.then === undefined) {
+        const node = Event.Node.__requestNode__(tree.root, a.path)
+        const list = Event.Node.__requestHandlers__(node , a.when)
+        if (list) list.splice(0).forEach(id => {
+          Id.release(id)
+        })
+      
+      // deafen all handlers for a given 'then'
+      } else if(a.when === undefined && a.then !== undefined) {
+        const node = Event.Node.__requestNode__(tree.root, a.path)
+        if (node) Object.values(node.handlers).forEach(list => {
+          if (list.includes(a.then))
+            Id.release(list.splice(list.indexOf(a.then), 1)[0])
+        })
+
+      // deafen all handlers for a given 'path' recursively
+      } else if(a.when === undefined && a.then === undefined) {
+        const node = Event.Node.__requestNode__(tree.root, a.path)
+        if (node) Event.Node.__releaseNode__(node)
+      }
     },
 
     /** 
@@ -517,9 +565,51 @@ const Event = {
      * @param {hgEventAction__Dispatch__<any>} a
      */
     __onDispatch__(tree, a) {
+      const node = Event.Node.__requestNode__(tree.root, a.path)
+      if (node) Event.Tree.__reDispatch__(
+        tree, 
+        node, 
+        a.path, 
+        a.when, 
+        a.what
+      )
+    },
 
+    /**
+     * @param {hgEventTree} tree
+     * @param {hgEventNode} node
+     * @param {string     } path
+     * @param {string     } when
+     * @param {any        } what
+     */
+    __reDispatch__(tree, node, path, when, what) {
+      Event.Node.__requestHandlers__(node, when)?.forEach(self => {
+        Id.resolve(self)?.(what, {tree, node, path, when, self})
+      })
+
+      Object.entries(node.children).forEach(([part, node]) => {
+        Event.Tree.__reDispatch__(
+          tree, 
+          node, 
+          path.split("/").concat(part).join("/"), 
+          when, 
+          what
+        )
+      })
     }
   },
+
+  /** 
+   * @template T
+   * @param {hgEventHandler<T>} then
+   * @returns {hgEventHandler<T>} 
+   */
+  once(then) {
+    return (what, {tree, node, path, when, self}) => {
+      then(what, {tree, node, path, when, self})
+      Event.Tree.deafen(tree, when, self, {path, defer: false})
+    }
+  }
 }
 
 /**

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <script src="./hg.js"></script>
+    <script>
+      console.log(hg.Version.toString(hg.VERSION))
+
+      const tree = hg.Event.Tree.new()
+
+      hg.Event.Tree.listen(tree, "foo", (what) => console.log(what), {path: "a/b/c"})
+      hg.Event.Tree.dispatch(tree, "foo", "bar")
+      hg.Event.Tree.dispatch(tree, "foo", "baz")
+      hg.Event.Tree.dispatch(tree, "oof", "rab")
+      hg.Event.Tree.poll(tree)
+      
+
+
+    </script>
+  </body>
+</html>
