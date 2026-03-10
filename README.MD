@@ -20,10 +20,10 @@ And then get started
 ```js
 const stage = hg.Stage.new()
 
-hg.Stage.setScene(stage, {
+hg.Stage.setScene(stage, hg.Scene.new({
   onRender({g}) {
     // that's all folks
   }
-})
+}))
 ```
 

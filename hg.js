@@ -1088,6 +1088,7 @@ const Stage = {
 
 /** @typedef {(stage: hgStage) => void} hgScene__onAttach__ */
 /** @typedef {(stage: hgStage) => void} hgScene__onDetach__ */
+/** @typedef {(resize: hgVector2) => void} hgScene__onResize__ */
 /** @typedef {(context: hgUpdateContext) => void} hgScene__onUpdate__ */
 /** @typedef {(context: hgRenderContext) => void} hgScene__onRender__ */
 
@@ -1097,6 +1098,7 @@ const Stage = {
  * @property {boolean} [renderable]
  * @property {hgId<hgScene__onAttach__>} [onAttach]
  * @property {hgId<hgScene__onDetach__>} [onDetach]
+ * @property {hgId<hgScene__onResize__>} [onResize]
  * @property {hgId<hgScene__onUpdate__>} [onUpdate]
  * @property {hgId<hgScene__onRender__>} [onRender]
  */
@@ -1107,6 +1109,7 @@ const Stage = {
  * @property {boolean} [renderable]
  * @property {hgScene__onAttach__} [onAttach]
  * @property {hgScene__onDetach__} [onDetach]
+ * @property {hgScene__onResize__} [onResize]
  * @property {hgScene__onUpdate__} [onUpdate]
  * @property {hgScene__onRender__} [onRender]
  */
@@ -1162,6 +1165,14 @@ const Scene = {
    */
   __detach__(stage, scene) {
     if (scene?.onDetach) Id.resolve(scene.onDetach)(stage)
+  },
+
+  /** 
+   * @param {hgVector2} resize
+   * @param {hgScene} scene 
+   */
+  __resize__(resize, scene) {
+    if (scene?.onResize) Id.resolve(scene.onResize)(resize)
   },
 
   /**
