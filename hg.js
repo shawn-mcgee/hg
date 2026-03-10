@@ -618,6 +618,8 @@ const Event = {
  * @property {boolean               } configureDebug
  * @property {number                } configureWidth
  * @property {number                } configureHeight
+ * @property {number                } configureUpdatesPerSecond
+ * @property {number                } configureRendersPerSecond
  * @property {string                } configureLogicalBackground
  * @property {string                } configureVirtualBackground
  * @property {number                } [configureScaleIncrement]
@@ -630,17 +632,51 @@ const Event = {
  * @property {number                                 } virtualScale
  * 
  * @property {hgEventTree} eventTree
+ * @property {hgScene    } [scene]
+ * 
+ * @property {number} millisPerUpdate
+ * @property {number} millisPerRender
+ * @property {number} updatesPerSecond
+ * @property {number} rendersPerSecond
+ * 
+ * @property {number} averageMillisPerUpdate
+ * @property {number} minimumMillisPerUpdate
+ * @property {number} maximumMillisPerUpdate
+ * 
+ * @property {number} averageMillisPerRender
+ * @property {number} minimumMillisPerRender
+ * @property {number} maximumMillisPerRender
+ * 
+ * @property {number} updatesPerSecondAccumulator
+ * @property {number} rendersPerSecondAccumulator
+ * 
+ * @property {number} averageMillisPerUpdateAccumulator
+ * @property {number} minimumMillisPerUpdateAccumulator
+ * @property {number} maximumMillisPerUpdateAccumulator
+ * 
+ * @property {number} averageMillisPerRenderAccumulator
+ * @property {number} minimumMillisPerRenderAccumulator
+ * @property {number} maximumMillisPerRenderAccumulator
+ * 
+ * @property {number} lastUpdate
+ * @property {number} lastRender
+ * @property {number} lastSecond
  */
 
 const Stage = {
   /** @type {"stage:resize"} */
   ON_RESIZE: "stage:resize",
+  /** @type {"stage:change"} */
+  ON_CHANGE: "stage:change",
 
   /** @returns {hgStage} */
   new({
     dbg, // configureDebug
     w  , // configureWidth
     h  , // configureHeight
+    fps,
+    ups, // configureUpdatesPerSecond
+    rps, // configureRendersPerSecond
     lbg, // configureLogicalBackground
     vbg, // configureVirtualBackground
     si , // configureScaleIncrement
@@ -650,10 +686,15 @@ const Stage = {
     const configureDebug             = dbg ?? false
     const configureWidth             = w   ??     0
     const configureHeight            = h   ??     0
+    const configureUpdatesPerSecond  = ups ?? fps ?? 0
+    const configureRendersPerSecond  = rps ?? fps ?? 0
     const configureLogicalBackground = lbg ?? "black"
     const configureVirtualBackground = vbg ?? "white"
     const configureScaleIncrement    = si
     const configureImageSmoothing    = is
+
+    const millisPerUpdate = configureUpdatesPerSecond > 0 ? 1000 / configureUpdatesPerSecond : 0
+    const millisPerRender = configureRendersPerSecond > 0 ? 1000 / configureRendersPerSecond : 0
 
     /** @type {HTMLCanvasElement} */
     const logicalCanvasElement = c ?? Canvas.__default__
@@ -688,6 +729,8 @@ const Stage = {
       configureDebug,
       configureWidth,
       configureHeight,
+      configureUpdatesPerSecond,
+      configureRendersPerSecond,
       configureLogicalBackground,
       configureVirtualBackground,
       configureScaleIncrement,
@@ -697,22 +740,60 @@ const Stage = {
       logicalCanvasContext: Id.acquire(logicalCanvasContext),
       virtualCanvasContext: Id.acquire(virtualCanvasContext),
       virtualScale,
-      eventTree
+      eventTree,
+
+      millisPerUpdate,
+      millisPerRender,
+      updatesPerSecond: 0,
+      rendersPerSecond: 0,
+
+      averageMillisPerUpdate: 0,
+      minimumMillisPerUpdate: 0,
+      maximumMillisPerUpdate: 0,
+
+      averageMillisPerRender: 0,
+      minimumMillisPerRender: 0,
+      maximumMillisPerRender: 0,
+
+      updatesPerSecondAccumulator: 0,
+      rendersPerSecondAccumulator: 0,
+
+      averageMillisPerUpdateAccumulator: 0,
+      minimumMillisPerUpdateAccumulator: Number.POSITIVE_INFINITY,
+      maximumMillisPerUpdateAccumulator: 0,
+
+      averageMillisPerRenderAccumulator: 0,
+      minimumMillisPerRenderAccumulator: Number.POSITIVE_INFINITY,
+      maximumMillisPerRenderAccumulator: 0,
+
+      lastUpdate: 0,
+      lastRender: 0,
+      lastSecond: 0,
     }
     
     new ResizeObserver(() => Stage.__resize__(stage)).observe(logicalCanvasElement)
 
-    Stage.listen(stage, Stage.ON_RESIZE, (size) => Stage.__onResize__(stage, size))
+    Stage.listen(stage, Stage.ON_RESIZE, (resize) => Stage.__onResize__(stage, resize))
+    Stage.listen(stage, Stage.ON_CHANGE, (change) => Stage.__onChange__(stage, change))
 
-    requestAnimationFrame(
-      t0 => requestAnimationFrame(
-        t1 => requestAnimationFrame(
-          t2 => Stage.__loop__(stage, t0, t1, t2)
-        )
-      )
-    )
+    requestAnimationFrame(firstFrame => {
+      stage.lastUpdate = firstFrame
+      stage.lastRender = firstFrame
+      stage.lastSecond = firstFrame
+      requestAnimationFrame(thisFrame => {
+        Stage.__loop__(stage, firstFrame, thisFrame)
+      })
+    })
 
     return stage
+  },
+
+  /**
+   * @param {hgStage            } stage
+   * @param {hgScene | undefined} scene
+   */
+  setScene(stage, scene) {
+    Stage.dispatch(stage, Stage.ON_CHANGE, scene)
   },
 
   /**
@@ -837,6 +918,16 @@ const Stage = {
       stage.virtualScale = Math.floor(stage.virtualScale / stage.configureScaleIncrement) * stage.configureScaleIncrement
   },
 
+  /**
+   * @param {hgStage} stage
+   * @param {hgScene} change
+   */
+  __onChange__(stage, change) {
+    Scene.__detach__(stage, stage.scene)
+    stage.scene = change
+    Scene.__attach__(stage, stage.scene)
+  },
+
   /** 
    * @param {hgStage} stage 
    * @param {number } t
@@ -844,6 +935,8 @@ const Stage = {
    */
   __update__(stage, t, dt) {
     Stage.poll(stage)
+    const [vw, vh] = Stage.getVirtualSize(stage)
+    Scene.__update__({stage, w: vw, h: vh, t, dt}, stage.scene)
   },
 
   /** 
@@ -867,6 +960,8 @@ const Stage = {
     g.fillStyle = stage.configureVirtualBackground
     g.fillRect(0, 0, vw, vh)
 
+    Scene.__render__({stage, w: vw, h: vh, g, t, dt}, stage.scene)
+
     h.translate(
       (lw - vw * vs) / 2,
       (lh - vh * vs) / 2
@@ -881,16 +976,214 @@ const Stage = {
    * @param {number } t1
    * @param {number } t2
    */
-  __loop__(stage, t0, t1, t2) {
-    const t  = (t2 - t0) / 1000
-    const dt = (t2 - t1) / 1000
+  __loop__(stage, firstFrame, thisFrame) {
+    if (thisFrame - stage.lastUpdate >= stage.millisPerUpdate) {
+      const t  = (thisFrame -       firstFrame) / 1000
+      const dt = (thisFrame - stage.lastUpdate) / 1000
 
-    Stage.__update__(stage, t, dt)
-    Stage.__render__(stage, t, dt)
 
-    requestAnimationFrame(t3 => Stage.__loop__(stage, t0, t2, t3))
+
+      const a = performance.now()
+      Stage.__update__(stage, t, dt)
+      const b = performance.now()
+
+      const updateMillis = b - a
+      stage.averageMillisPerUpdateAccumulator += updateMillis
+      stage.minimumMillisPerUpdateAccumulator  = Math.min(stage.minimumMillisPerUpdateAccumulator, updateMillis)
+      stage.maximumMillisPerUpdateAccumulator  = Math.max(stage.maximumMillisPerUpdateAccumulator, updateMillis)
+      
+      stage.updatesPerSecondAccumulator += 1
+
+      if (!stage.millisPerUpdate) { 
+        stage.lastUpdate = thisFrame
+      } else {
+        if (1000 * dt > 10 * stage.millisPerUpdate) {
+          const delta = Math.floor(1000 * dt / stage.millisPerUpdate)
+          console.warn(`[Stage.__loop__] updates are behind by ${delta} frames, fast-forwarding.`)
+
+          stage.lastUpdate += delta * stage.millisPerUpdate
+        } else {
+          stage.lastUpdate +=         stage.millisPerUpdate
+        }
+      }
+    }
+
+    if (thisFrame - stage.lastRender >= stage.millisPerRender) {
+      const t  = (thisFrame -       firstFrame) / 1000
+      const dt = (thisFrame - stage.lastRender) / 1000
+
+      const a = performance.now()
+      Stage.__render__(stage, t, dt)
+      const b = performance.now()
+
+      const renderMillis = b - a
+      stage.averageMillisPerRenderAccumulator += renderMillis
+      stage.minimumMillisPerRenderAccumulator  = Math.min(stage.minimumMillisPerRenderAccumulator, renderMillis)
+      stage.maximumMillisPerRenderAccumulator  = Math.max(stage.maximumMillisPerRenderAccumulator, renderMillis)
+      
+      stage.rendersPerSecondAccumulator += 1
+
+      if (!stage.millisPerRender) { 
+        stage.lastRender = thisFrame
+      } else {
+        if (1000 * dt > 10 * stage.millisPerRender) {
+          const delta = Math.floor(1000 * dt / stage.millisPerRender)
+          console.warn(`[Stage.__loop__] renders are behind by ${delta} frames, fast-forwarding.`)
+
+          stage.lastRender += delta * stage.millisPerRender
+        } else {
+          stage.lastRender +=         stage.millisPerRender
+        }
+      }
+    }
+
+    if (thisFrame - stage.lastSecond >= 1000) {
+      stage.updatesPerSecond = stage.updatesPerSecondAccumulator
+      stage.rendersPerSecond = stage.rendersPerSecondAccumulator
+
+      stage.averageMillisPerUpdate = stage.averageMillisPerUpdateAccumulator / stage.updatesPerSecondAccumulator
+      stage.minimumMillisPerUpdate = stage.minimumMillisPerUpdateAccumulator
+      stage.maximumMillisPerUpdate = stage.maximumMillisPerUpdateAccumulator
+
+      stage.averageMillisPerRender = stage.averageMillisPerRenderAccumulator / stage.rendersPerSecondAccumulator
+      stage.minimumMillisPerRender = stage.minimumMillisPerRenderAccumulator
+      stage.maximumMillisPerRender = stage.maximumMillisPerRenderAccumulator
+
+      stage.updatesPerSecondAccumulator = 0
+      stage.rendersPerSecondAccumulator = 0
+
+      stage.averageMillisPerUpdateAccumulator = 0
+      stage.minimumMillisPerUpdateAccumulator = Number.POSITIVE_INFINITY
+      stage.maximumMillisPerUpdateAccumulator = 0
+
+      stage.averageMillisPerRenderAccumulator = 0
+      stage.minimumMillisPerRenderAccumulator = Number.POSITIVE_INFINITY
+      stage.maximumMillisPerRenderAccumulator = 0
+
+      stage.lastSecond = thisFrame
+    }
+
+    requestAnimationFrame(nextFrame => Stage.__loop__(stage, firstFrame, nextFrame))
   },
 }
+
+/** 
+ * @typedef hgUpdateContext
+ * @property {hgStage} stage
+ * @property {number } w
+ * @property {number } h
+ * @property {number } t
+ * @property {number } dt
+ */
+
+/** 
+ * @typedef hgRenderContext
+ * @property {hgStage} stage
+ * @property {number } w
+ * @property {number } h
+ * @property {OffscreenCanvasRenderingContext2D} g
+ * @property {number } t
+ * @property {number } dt
+ */
+
+/** @typedef {(stage: hgStage) => void} hgScene__onAttach__ */
+/** @typedef {(stage: hgStage) => void} hgScene__onDetach__ */
+/** @typedef {(context: hgUpdateContext) => void} hgScene__onUpdate__ */
+/** @typedef {(context: hgRenderContext) => void} hgScene__onRender__ */
+
+/** 
+ * @typedef hgScene 
+ * @property {boolean} [updateable]
+ * @property {boolean} [renderable]
+ * @property {hgId<hgScene__onAttach__>} [onAttach]
+ * @property {hgId<hgScene__onDetach__>} [onDetach]
+ * @property {hgId<hgScene__onUpdate__>} [onUpdate]
+ * @property {hgId<hgScene__onRender__>} [onRender]
+ */
+
+/**
+ * @typedef hgSceneOptions
+ * @property {boolean} [updateable]
+ * @property {boolean} [renderable]
+ * @property {hgScene__onAttach__} [onAttach]
+ * @property {hgScene__onDetach__} [onDetach]
+ * @property {hgScene__onUpdate__} [onUpdate]
+ * @property {hgScene__onRender__} [onRender]
+ */
+
+
+const Scene = {
+  /**
+   * @param {hgSceneOptions}
+   * @returns {hgScene}
+   */
+  new({
+    updateable,
+    renderable,
+    onAttach,
+    onDetach,
+    onUpdate,
+    onRender,
+  }) {
+    const scene = { 
+      updateable,
+      renderable,
+    }
+
+    if (onAttach) scene.onAttach = Id.acquire(onAttach)
+    if (onDetach) scene.onDetach = Id.acquire(onDetach)
+    if (onUpdate) scene.onUpdate = Id.acquire(onUpdate)
+    if (onRender) scene.onRender = Id.acquire(onRender)
+
+    return scene
+  },
+
+  /** @param {hgScene | undefined} scene */
+  isUpdateable(scene) {
+    return Boolean(scene && (scene.updateable ?? true) && scene.onUpdate)
+  },
+
+  /** @param {hgScene | undefined} scene */
+  isRenderable(scene) {
+    return Boolean(scene && (scene.renderable ?? true) && scene.onRender)
+  },
+
+  /** 
+   * @param {hgStage} stage
+   * @param {hgScene} scene 
+   */
+  __attach__(stage, scene) {
+    if (scene?.onAttach) Id.resolve(scene.onAttach)(stage)
+  },
+
+  /** 
+   * @param {hgStage} stage
+   * @param {hgScene} scene 
+   */
+  __detach__(stage, scene) {
+    if (scene?.onDetach) Id.resolve(scene.onDetach)(stage)
+  },
+
+  /**
+   * @param {hgUpdateContext    } context
+   * @param {hgScene | undefined} scene
+   */
+  __update__(context, scene) {
+    if (Scene.isUpdateable(scene))
+      Id.resolve(scene.onUpdate)(context)
+  },
+
+  /**
+   * @param {hgRenderContext    } context
+   * @param {hgScene | undefined} scene
+   */
+  __render__(context, scene) {
+    if (Scene.isRenderable(scene))
+      Id.resolve(scene.onRender)(context)
+  },
+}
+
+console.log(Version.toString(VERSION))
 
 const hg = {
   Version,
@@ -904,6 +1197,7 @@ const hg = {
   Id,
   Event,
   Stage,
+  Scene
 }
 
 window.hg = hg

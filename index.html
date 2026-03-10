@@ -6,14 +6,15 @@
   <body>
     <script src="./hg.js"></script>
     <script>
-      console.log(hg.Version.toString(hg.VERSION))
+      const stage = hg.Stage.new({w: 256, h: 256, fps: 60})
 
-      const stage = hg.Stage.new({w: 256, h: 256})
-
-      console.log(JSON.stringify(stage, null, 2))
+      hg.Stage.setScene(stage, hg.Scene.new({
+        onRender({g, dt}) {
+          g.fillStyle = "red"
+          g.fillRect(0, 0, 10, 10)
+        }
+      }))
       
-
-
     </script>
   </body>
 </html>
