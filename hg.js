@@ -271,11 +271,14 @@ const Id = {
   /**
    * @template T
    * @param {hgId<T>} id
+   * @returns {T}
    */
   release(id) {
     if (!(id in Id.__table__))
       throw new Error(`[Id.release] item with id '${id}' does not exist.`)
+    const t = Id.__table__[id]
     delete Id.__table__[id]
+    return t
   },
 
   __uniqueId__() {
@@ -631,8 +634,9 @@ const Event = {
  * @property {hgId<OffscreenCanvasRenderingContext2D>} virtualCanvasContext
  * @property {number                                 } virtualScale
  * 
- * @property {hgEventTree} eventTree
+ * @property {hgEventTree} events
  * @property {hgScene    } [scene]
+ * @property {hgKeyboard } keyboard
  * 
  * @property {number} millisPerUpdate
  * @property {number} millisPerRender
@@ -722,7 +726,7 @@ const Stage = {
       virtualCanvasContext.imageSmoothingQuality = configureImageSmoothing
     }
 
-    const eventTree = Event.Tree.new()
+    const events = Event.Tree.new()
 
     
     const stage = {
@@ -740,7 +744,7 @@ const Stage = {
       logicalCanvasContext: Id.acquire(logicalCanvasContext),
       virtualCanvasContext: Id.acquire(virtualCanvasContext),
       virtualScale,
-      eventTree,
+      events,
 
       millisPerUpdate,
       millisPerRender,
@@ -775,6 +779,11 @@ const Stage = {
 
     Stage.listen(stage, Stage.ON_RESIZE, (resize) => Stage.__onResize__(stage, resize))
     Stage.listen(stage, Stage.ON_CHANGE, (change) => Stage.__onChange__(stage, change))
+    Stage.listen(stage, Keyboard.ON_KEY_DOWN, (ke) => Stage.__onKeyDown__(stage, ke))
+    Stage.listen(stage, Keyboard.ON_KEY_UP  , (ke) => Stage.__onKeyUp__  (stage, ke))
+
+
+    stage.keyboard = Keyboard.new(stage)
 
     requestAnimationFrame(firstFrame => {
       stage.lastUpdate = firstFrame
@@ -804,7 +813,7 @@ const Stage = {
    * @param {{path ?: string, defer?: boolean}}
    */
   listen(stage, when, then, {path, defer}={}) {
-    Event.Tree.listen(stage.eventTree, when, then, {path, defer})
+    Event.Tree.listen(stage.events, when, then, {path, defer})
   },
 
   /**
@@ -815,7 +824,7 @@ const Stage = {
    * @param {{path ?: string, defer?: boolean}}
    */
   deafen(stage, when, then, {path, defer}={}) {
-    Event.Tree.deafen(stage.eventTree, when, then, {path, defer})
+    Event.Tree.deafen(stage.events, when, then, {path, defer})
   },
 
   /**
@@ -826,12 +835,12 @@ const Stage = {
    * @param {{path ?: string, defer?: boolean}}
    */
   dispatch(stage, when, what, {path, defer}={}) {
-    Event.Tree.dispatch(stage.eventTree, when, what, {path, defer})
+    Event.Tree.dispatch(stage.events, when, what, {path, defer})
   },
 
   /** @param {hgStage} stage */
   poll(stage) {
-    Event.Tree.poll(stage.eventTree)
+    Event.Tree.poll(stage.events)
   },
 
   /** @param {hgStage} stage */
@@ -926,6 +935,14 @@ const Stage = {
     Scene.__detach__(stage, stage.scene)
     stage.scene = change
     Scene.__attach__(stage, stage.scene)
+  },
+
+  __onKeyUp__(stage, key) {
+    Scene.__keyUp__(key, stage.scene)
+  },
+
+  __onKeyDown__(stage, key) {
+    Scene.__keyDown__(key, stage.scene)
   },
 
   /** 
@@ -1067,6 +1084,84 @@ const Stage = {
   },
 }
 
+/**
+ * @typedef hgKeyboard
+ * @property {hgStage} stage
+ * @property {Record<string, boolean>} keys
+ */
+const Keyboard = {
+  ON_NATIVE_KEY_UP  : "keyboard:native-keyup",
+  ON_NATIVE_KEY_DOWN: "keyboard:native-keydown",
+
+  ON_KEY_UP  : "keyboard:keyup"  ,
+  ON_KEY_DOWN: "keyboard:keydown",
+
+  /** 
+   * @param {hgStage} stage
+   * @returns {hgKeyboard} 
+   */
+  new(stage) {
+    const kb = {
+      stage,
+      keys: { },
+    }
+
+    Stage.listen(stage, Keyboard.ON_NATIVE_KEY_UP  , ke => Keyboard.__onNativeKeyUp__  (kb, ke))
+    Stage.listen(stage, Keyboard.ON_NATIVE_KEY_DOWN, ke => Keyboard.__onNativeKeyDown__(kb, ke))
+    
+    document.onkeyup   = ke => Stage.dispatch(stage, Keyboard.ON_NATIVE_KEY_UP  , Id.acquire(ke))
+    document.onkeydown = ke => Stage.dispatch(stage, Keyboard.ON_NATIVE_KEY_DOWN, Id.acquire(ke))
+
+    return kb
+  },
+
+  isKeyUp  (kb, key) {
+    return  !kb.keys[key]
+  },
+
+  isKeyDown(kb, key) {
+    return !!kb.keys[key]
+  },
+  
+  /**
+   * @param {hgKeyboard} kb 
+   * @param {hgId<KeyboardEvent>} ke 
+   */
+  __onNativeKeyUp__  (kb, ke) {
+    const key = Id.resolve(ke).key
+    Id.release(ke)
+    // is key down?
+    if (!!kb.keys[key]) {
+      kb.keys[key] = false
+      Stage.dispatch(kb.stage, Keyboard.ON_KEY_UP, key, {defer: false})
+    }
+  },
+
+  /**
+   * @param {hgKeyboard} kb 
+   * @param {hgId<KeyboardEvent>} ke 
+   */
+  __onNativeKeyDown__(kb, ke) {
+    const key = Id.resolve(ke).key
+    // is key up?
+    if ( !kb.keys[key]) {
+      kb.keys[key] = true
+      Stage.dispatch(kb.stage, Keyboard.ON_KEY_DOWN, key, {defer: false})
+    }
+  },
+}
+
+/**
+ * @typedef hgInput
+ * @property {Record<string, boolean>} keyboardKeys
+ * @property {Record<number, boolean>} mouseButtons
+ * 
+ */
+
+const Input = {
+
+}
+
 /** 
  * @typedef hgUpdateContext
  * @property {hgStage} stage
@@ -1089,6 +1184,8 @@ const Stage = {
 /** @typedef {(stage: hgStage) => void} hgScene__onAttach__ */
 /** @typedef {(stage: hgStage) => void} hgScene__onDetach__ */
 /** @typedef {(resize: hgVector2) => void} hgScene__onResize__ */
+/** @typedef {(key: string) => void} hgScene__onKeyUp__ */
+/** @typedef {(key: string) => void} hgScene__onKeyDown__ */
 /** @typedef {(context: hgUpdateContext) => void} hgScene__onUpdate__ */
 /** @typedef {(context: hgRenderContext) => void} hgScene__onRender__ */
 
@@ -1099,6 +1196,8 @@ const Stage = {
  * @property {hgId<hgScene__onAttach__>} [onAttach]
  * @property {hgId<hgScene__onDetach__>} [onDetach]
  * @property {hgId<hgScene__onResize__>} [onResize]
+ * @property {hgId<hgScene__onKeyUp__  >} [onKeyUp  ]
+ * @property {hgId<hgScene__onKeyDown__>} [onKeyDown]
  * @property {hgId<hgScene__onUpdate__>} [onUpdate]
  * @property {hgId<hgScene__onRender__>} [onRender]
  */
@@ -1112,6 +1211,8 @@ const Stage = {
  * @property {hgScene__onResize__} [onResize]
  * @property {hgScene__onUpdate__} [onUpdate]
  * @property {hgScene__onRender__} [onRender]
+ * @property {hgScene__onKeyUp__ } [onKeyUp  ]
+ * @property {hgScene__onKeyDown__} [onKeyDown]
  */
 
 
@@ -1125,6 +1226,8 @@ const Scene = {
     renderable,
     onAttach,
     onDetach,
+    onKeyUp  ,
+    onKeyDown,
     onUpdate,
     onRender,
   }) {
@@ -1137,6 +1240,8 @@ const Scene = {
     if (onDetach) scene.onDetach = Id.acquire(onDetach)
     if (onUpdate) scene.onUpdate = Id.acquire(onUpdate)
     if (onRender) scene.onRender = Id.acquire(onRender)
+    if (onKeyUp  ) scene.onKeyUp   = Id.acquire(onKeyUp  )
+    if (onKeyDown) scene.onKeyDown = Id.acquire(onKeyDown)
 
     return scene
   },
@@ -1176,6 +1281,22 @@ const Scene = {
   },
 
   /**
+   * @param {string} key 
+   * @param {hgScene} scene 
+   */
+  __keyUp__(key, scene) {
+    if (scene?.onKeyUp  ) Id.resolve(scene.onKeyUp  )(key)
+  },
+
+  /**
+   * @param {string} key 
+   * @param {hgScene} scene 
+   */
+  __keyDown__(key, scene) {
+    if (scene?.onKeyDown) Id.resolve(scene.onKeyDown)(key)
+  },
+
+  /**
    * @param {hgUpdateContext    } context
    * @param {hgScene | undefined} scene
    */
@@ -1208,7 +1329,9 @@ const hg = {
   Id,
   Event,
   Stage,
-  Scene
+  Scene,
+
+  Keyboard,
 }
 
 window.hg = hg

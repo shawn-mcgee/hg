@@ -9,9 +9,8 @@
       const stage = hg.Stage.new({w: 256, h: 256, fps: 60})
 
       hg.Stage.setScene(stage, hg.Scene.new({
-        onRender({g, dt}) {
-          g.fillStyle = "red"
-          g.fillRect(0, 0, 10, 10)
+        onUpdate() {
+          console.log(hg.Keyboard.isKeyDown(stage.keyboard, "a"))
         }
       }))
       
