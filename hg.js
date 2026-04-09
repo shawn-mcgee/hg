@@ -1,22 +1,5 @@
-/**
- * @typedef hgVersion
- * @property {string} moniker
- * @property {number} major
- * @property {number} minor
- * @property {number} patch
- */
-
 const Version = {
-  /**
-   * @param {Partial<hgVersion>}
-   * @returns {hgVersion}
-   */
-  new({
-    moniker,
-    major,
-    minor,
-    patch,
-  }={}) {
+  new(moniker, major, minor, patch) {
     return {
       moniker: moniker ?? "hg",
       major  : major   ??   0,
@@ -25,263 +8,322 @@ const Version = {
     }
   },
 
-  /** @param {hgVersion} */
-  toString({ moniker, major, minor, patch }) {
-    return `${moniker} ${major}.${minor}.${patch}`
+  toString(a) {
+    return `${a.moniker} ${a.major}.${a.minor}.${a.patch}`
   },
 
-  /**
-   * @param {hgVersion} a 
-   * @param {hgVersion} b 
-   */
   compare(a, b) {
     let k;
     if ((k = a.major - b.major) !== 0) return k;
     if ((k = a.minor - b.minor) !== 0) return k;
-    return a.patch - b.patch;
+    if ((k = a.patch - b.patch) !== 0) return k;
+    return 0;
   },
 }
 
-const VERSION = Version.new({
-  moniker: "hg",
-  major  : 0,
-  minor  : 1,
-  patch  : 0,
-})
-
-/**
- * @typedef {number | number[]} hgVectorLike
- */
+const VERSION = Version.new("hg", 0, 1, 0)
 
 const Vector = {
-  /** @type {0} */
-  X: 0,
-  /** @type {1} */
-  Y: 1,
-  /** @type {2} */
-  Z: 2,
-  /** @type {3} */
-  W: 3,
-
   __get__: {
-    /** @param {hgVectorLike} a */
-    x(a) { return typeof a === "number" ? a : a[Vector.X] ?? 0 },
-    /** @param {hgVectorLike} a */
-    y(a) { return typeof a === "number" ? a : a[Vector.Y] ?? 0 },
-    /** @param {hgVectorLike} a */
-    z(a) { return typeof a === "number" ? a : a[Vector.Z] ?? 0 },
-    /** @param {hgVectorLike} a */
-    w(a) { return typeof a === "number" ? a : a[Vector.W] ?? 0 },
-    /** @param {hgVectorLike} a */
+    x(a, x=0) { return typeof a === "number" ? a : a[0] ?? x },
+    y(a, y=0) { return typeof a === "number" ? a : a[1] ?? y },
+    z(a, z=0) { return typeof a === "number" ? a : a[2] ?? z },
+    w(a, w=0) { return typeof a === "number" ? a : a[3] ?? w },
     n(a) { return typeof a === "number" ? 1 : a.length ?? 0 },
   },
-
+  
   __set__: {
-    /** 
-     * @param {hgVectorLike} a 
-     * @param {number} x
-     */
-    x(a, x) { return typeof a === "number" ? x : (a[Vector.X] = x) },
-    /** 
-     * @param {hgVectorLike} a 
-     * @param {number} y
-     */
-    y(a, y) { return typeof a === "number" ? y : (a[Vector.Y] = y) },
-    /** 
-     * @param {hgVectorLike} a 
-     * @param {number} z
-     */
-    z(a, z) { return typeof a === "number" ? z : (a[Vector.Z] = z) },
-    /** 
-     * @param {hgVectorLike} a 
-     * @param {number} w
-     */
-    w(a, w) { return typeof a === "number" ? w : (a[Vector.W] = w) },
+    x(a, x) { return typeof a === "number" ? x : (a[0] = x) },
+    y(a, y) { return typeof a === "number" ? y : (a[1] = y) },
+    z(a, z) { return typeof a === "number" ? z : (a[2] = z) },
+    w(a, w) { return typeof a === "number" ? w : (a[3] = w) },
   },
 
-  /**
-   * @param {hgVectorLike} a
-   * @param {number} [x]
-   */
   x(a, x) { return x === undefined ? Vector.__get__.x(a) : Vector.__set__.x(a, x) },
-  /**
-   * @param {hgVectorLike} a
-   * @param {number} [y]
-   */
   y(a, y) { return y === undefined ? Vector.__get__.y(a) : Vector.__set__.y(a, y) },
-  /**
-   * @param {hgVectorLike} a
-   * @param {number} [z]
-   */
   z(a, z) { return z === undefined ? Vector.__get__.z(a) : Vector.__set__.z(a, z) },
-  /**
-   * @param {hgVectorLike} a
-   * @param {number} [w]
-   */
   w(a, w) { return w === undefined ? Vector.__get__.w(a) : Vector.__set__.w(a, w) },
 }
 
-/** @typedef {[number, number]} hgVector2 */
-
 const Vector2 = {
-  /**
-   * @param {number} [x]
-   * @param {number} [y]
-   * @returns {hgVector2}
-   */
   new(x, y) {
     return (
       y === undefined
-    ) ? [
-      x ??= 0,
-      x
-    ] : [
-      x ?? 0,
-      y ?? 0
-    ]
+    ) ? [x ??= 0, x     ]
+      : [x ??  0, y ?? 0]
   },
 
-  /** @param {hgVectorLike} a */
   toString(a) {
-    const x = Vector__get__.x(a)
-    const y = Vector__get__.y(a)
+    const x = Vector.__get__.x(a)
+    const y = Vector.__get__.y(a)
     return `vec2(${x}, ${y})`
+  },
+
+  add(a, b) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    return Vector2.new(xa + xb, ya + yb)
+  },
+
+  sub(a, b) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    return Vector2.new(xa - xb, ya - yb)
+  },
+
+  mul(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    return Vector2.new(xa * xb, ya * yb)
+  },
+
+  div(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    return Vector2.new(xa / xb, ya / yb)
+  },
+
+  mod(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    return Vector2.new(xa % xb, ya % yb)
+  },
+
+  dot(a, b=a) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    return xa * xb + ya * yb
+  },
+
+  len(a) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    return Math.sqrt(xa * xa + ya * ya)
   }
 }
 
-/** @typedef {[number, number, number]} hgVector3 */
-
 const Vector3 = {
-  /**
-   * @param {number} [x]
-   * @param {number} [y]
-   * @param {number} [z]
-   * @returns {hgVector3}
-   */
   new(x, y, z) {
     return (
       y === undefined &&
       z === undefined
-    ) ? [
-      x ??= 0,
-      x,
-      x
-    ] : [
-      x ?? 0,
-      y ?? 0,
-      z ?? 0
-    ]
+    ) ? [x ??= 0, x     , x     ]
+      : [x ??  0, y ?? 0, z ?? 0]
   },
 
-  /** @param {hgVectorLike} a */
   toString(a) {
-    const x = Vector__get__.x(a)
-    const y = Vector__get__.y(a)
-    const z = Vector__get__.z(a)
+    const x = Vector.__get__.x(a)
+    const y = Vector.__get__.y(a)
+    const z = Vector.__get__.z(a)
     return `vec3(${x}, ${y}, ${z})`
+  },
+
+  add(a, b) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    const zb = Vector.__get__.z(b)
+    return Vector3.new(xa + xb, ya + yb, za + zb)
+  },
+
+  sub(a, b) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    const zb = Vector.__get__.z(b)
+    return Vector3.new(xa - xb, ya - yb, za - zb)
+  },
+
+  mul(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const za = Vector.__get__.z(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    const zb = Vector.__get__.z(b, 1)
+    return Vector3.new(xa * xb, ya * yb, za * zb)
+  },
+
+  div(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const za = Vector.__get__.z(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    const zb = Vector.__get__.z(b, 1)
+    return Vector3.new(xa / xb, ya / yb, za / zb)
+  },
+
+  mod(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const za = Vector.__get__.z(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    const zb = Vector.__get__.z(b, 1)
+    return Vector3.new(xa % xb, ya % yb, za % zb)
+  },
+
+  dot(a, b=a) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    const zb = Vector.__get__.z(b)
+    return xa * xb + ya * yb + za * zb
+  },
+
+  len(a) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    return Math.sqrt(xa * xa + ya * ya + za * za)
   }
 }
 
-/** @typedef {[number, number, number, number]} hgVector4 */
-
 const Vector4 = {
-  /**
-   * @param {number} [x]
-   * @param {number} [y]
-   * @param {number} [z]
-   * @param {number} [w]
-   * @returns {hgVector4}
-   */
   new(x, y, z, w) {
     return (
       y === undefined &&
       z === undefined &&
       w === undefined
-    ) ? [
-      x ??= 0,
-      x,
-      x,
-      x
-    ] : [
-      x ?? 0,
-      y ?? 0,
-      z ?? 0,
-      w ?? 0
-    ]
+    ) ? [x ??= 0, x     , x     , x     ]
+      : [x ??  0, y ?? 0, z ?? 0, w ?? 0]
   },
 
-  /** @param {hgVectorLike} a */
   toString(a) {
-    const x = Vector__get__.x(a)
-    const y = Vector__get__.y(a)
-    const z = Vector__get__.z(a)
-    const w = Vector__get__.w(a)
+    const x = Vector.__get__.x(a)
+    const y = Vector.__get__.y(a)
+    const z = Vector.__get__.z(a)
+    const w = Vector.__get__.w(a)
     return `vec4(${x}, ${y}, ${z}, ${w})`
+  },
+
+  add(a, b) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    const wa = Vector.__get__.w(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    const zb = Vector.__get__.z(b)
+    const wb = Vector.__get__.w(b)
+    return Vector4.new(xa + xb, ya + yb, za + zb, wa + wb)
+  },
+
+  sub(a, b) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    const wa = Vector.__get__.w(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    const zb = Vector.__get__.z(b)
+    const wb = Vector.__get__.w(b)
+    return Vector4.new(xa - xb, ya - yb, za - zb, wa - wb)
+  },
+
+  mul(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const za = Vector.__get__.z(a, 1)
+    const wa = Vector.__get__.w(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    const zb = Vector.__get__.z(b, 1)
+    const wb = Vector.__get__.w(b, 1)
+    return Vector4.new(xa * xb, ya * yb, za * zb, wa * wb)
+  },
+
+  div(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const za = Vector.__get__.z(a, 1)
+    const wa = Vector.__get__.w(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    const zb = Vector.__get__.z(b, 1)
+    const wb = Vector.__get__.w(b, 1)
+    return Vector4.new(xa / xb, ya / yb, za / zb, wa / wb)
+  },
+
+  mod(a, b) {
+    const xa = Vector.__get__.x(a, 1)
+    const ya = Vector.__get__.y(a, 1)
+    const za = Vector.__get__.z(a, 1)
+    const wa = Vector.__get__.w(a, 1)
+    const xb = Vector.__get__.x(b, 1)
+    const yb = Vector.__get__.y(b, 1)
+    const zb = Vector.__get__.z(b, 1)
+    const wb = Vector.__get__.w(b, 1)
+    return Vector4.new(xa % xb, ya % yb, za % zb, wa % wb)
+  },
+
+  dot(a, b=a) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    const wa = Vector.__get__.w(a)
+    const xb = Vector.__get__.x(b)
+    const yb = Vector.__get__.y(b)
+    const zb = Vector.__get__.z(b)
+    const wb = Vector.__get__.w(b)
+    return xa * xb + ya * yb + za * zb + wa * wb
+  },
+
+  len(a) {
+    const xa = Vector.__get__.x(a)
+    const ya = Vector.__get__.y(a)
+    const za = Vector.__get__.z(a)
+    const wa = Vector.__get__.w(a)
+    return Math.sqrt(xa * xa + ya * ya + za * za + wa * wa)
   }
 }
-
-const Canvas = {
-  get __default__() {
-    const c = document.createElement("canvas")
-      c.style.position = "absolute"
-      c.style.top      = "0px"
-      c.style.left     = "0px"
-      c.style.width    = "100dvw"
-      c.style.height   = "100dvh"
-    document.body.appendChild(c)
-
-    delete  Canvas.__default__
-    return (Canvas.__default__ = c)
-  }
-}
-
-/**
- * @template T
- * @typedef {string & { __kind__: T }} hgId
-*/
 
 const Id = {
-  /** @type {Record<hgId<any>, any>} */
   __table__: { },
 
-  /**
-   * @template T
-   * @param {T} what
-   * @param {string} [id]
-   */
+  /**@param {string} [id] */
   acquire(what, id) {
-    id ??= Id.__uniqueId__()
+    id  ??= Id.__unique__()
     if (id in Id.__table__)
       throw new Error(`[Id.acquire] item with id '${id}' already exists.`)
     Id.__table__[id] = what
     return id
   },
 
-  /**
-   * @template T
-   * @param {hgId<T>} id
-   * @returns {T}
-   */
   resolve(id) {
     if (!(id in Id.__table__))
       throw new Error(`[Id.resolve] item with id '${id}' does not exist.`)
     return Id.__table__[id]
   },
 
-  /**
-   * @template T
-   * @param {hgId<T>} id
-   * @returns {T}
-   */
   release(id) {
     if (!(id in Id.__table__))
       throw new Error(`[Id.release] item with id '${id}' does not exist.`)
-    const t = Id.__table__[id]
+    const what = Id.__table__[id]
     delete Id.__table__[id]
-    return t
+    return what
   },
 
-  __uniqueId__() {
+  __unique__() {
     let id = crypto.randomUUID()
     while (id in Id.__table__) 
         id = crypto.randomUUID()
@@ -289,1033 +331,658 @@ const Id = {
   }
 }
 
-const LISTEN   = "__listen__"
-const DEAFEN   = "__deafen__"
-const DISPATCH = "__dispatch__"
-/**
- * @template T
- * @typedef {(what: T, context: hgEventContext<T>) => void} hgEventHandler
- */
-
-/**
- * @template T
- * @typedef {hgEventHandler<T>[]} hgEventHandlers
- */
-
-/**
- * @typedef hgEventNode
- * @property {Record<string, hgEventHandlers<any>>} handlers
- * @property {Record<string, hgEventNode>         } children
- */
-
-/**
- * @typedef hgEventTree
- * @property {hgEventNode         } root
- * @property {hgEventAction<any>[]} pending
- */
-
-/**
- * @template T
- * @typedef hgEventContext
- * @property {hgEventTree            } tree
- * @property {hgEventNode            } node
- * @property {string                 } path
- * @property {string                 } when
- * @property {hgId<hgEventHandler<T>>} self
- */
-
-/**
- * @template T
- * @typedef hgEventAction__Listen__
- * @property {typeof LISTEN          } action
- * @property {string                 } path
- * @property {string                 } when
- * @property {hgId<hgEventHandler<T>>} then
- */
-
-/**
- * @template T
- * @typedef hgEventAction__Deafen__
- * @property {typeof DEAFEN          } action
- * @property {string                 } path
- * @property {string                 } [when]
- * @property {hgId<hgEventHandler<T>>} [then]
- */
-
-/**
- * @template T
- * @typedef hgEventAction__Dispatch__
- * @property {typeof DISPATCH} action
- * @property {string         } path
- * @property {string         } when
- * @property {T              } what
- */
-
-/**
- * @template T
- * @typedef {hgEventAction__Listen__<T> | hgEventAction__Deafen__<T> | hgEventAction__Dispatch__<T>} hgEventAction
- */
-
 const Event = {
+  __scheduled__: [ ],
+  __listeners__: { },
 
-  Node: {
-    /** @returns {hgEventNode} */
-    new() {
-      return {
-        handlers: { },
-        children: { },
-      }
-    },
-
-    /**
-     * @param {hgEventNode | undefined} root
-     * @param {string                 } path
-     */
-    __requestNode__(root, path) {
-      for (let part of path.split("/").filter(Boolean)) {
-        let node = root?.children?.[part]
-        if (!node) return
-        root = node
-      }
-      return root
-    },
-
-    /**
-     * 
-     * @param {hgEventNode} root 
-     * @param {string     } path 
-     */
-    __requireNode__(root, path) {
-      for (let part of path.split("/").filter(Boolean)) {
-        let node = root.children[part]
-        if (!node) root.children[part] = (
-          node = Event.Node.new()
-        )
-        root = node
-      }
-      return root
-    },
-
-    /**
-     * @param {hgEventNode | undefined} root 
-     * @param {string                 } when 
-     */
-    __requestHandlers__(root, when) {
-      let list = root?.handlers?.[when]
-      if (!list) return
-      return list
-    },
-
-    /**
-     * @param {hgEventNode} root 
-     * @param {string     } when 
-     */
-    __requireHandlers__(root, when) {
-      let list = root.handlers[when]
-      if (!list) root.handlers[when] = (
-        list = [ ]
-      )
-      return list
-    },
-
-    /** @param {hgEventNode} root */
-    __releaseNode__(root) {
-      Object.values(root.children).forEach(node => {
-        Event.Node.__releaseNode__(node)
-      })
-
-      Object.values(root.handlers).forEach(list => {
-        list.splice(0).forEach(id => {
-          Id.release(id)
-        })
-      })
-
-      root.children = { }
-      root.handlers = { }
-    },
+  on  (when, then, defer=true ) {
+    const a = { is: "event:on"  , when, then: Id.acquire(then) }
+    if (defer) Event.__queue__(a)
+    else       Event.__flush__(a)
   },
 
-  Tree: {
-    /** @returns {hgEventTree} */
-    new() {
-      return {
-        root: Event.Node.new(),
-        pending: [ ],
-      }
-    },
-
-    /**
-     * @template T
-     * @param {hgEventTree      } tree
-     * @param {string           } when 
-     * @param {hgEventHandler<T>} then
-     * @param {{path ?: string, defer?: boolean}}
-     */
-    listen(tree, when, then, {path, defer}={}) {
-      /** @type {hgEventAction__Listen__<T>} */ 
-      const a = { action: LISTEN, when, then: Id.acquire(then), path: path ?? "" }
-      if (defer ?? true) Event.Tree.__queue__(tree, a)
-      else               Event.Tree.__flush__(tree, a)
-    },
-
-    /**
-     * @template T
-     * @param {hgEventTree            } tree
-     * @param {string                 } [when] 
-     * @param {hgId<hgEventHandler<T>>} [then]
-     * @param {{path ?: string, defer?: boolean}}
-     */
-    deafen(tree, when, then, {path, defer}={}) {
-      /** @type {hgEventAction__Deafen__<T>} */ 
-      const a = { action: DEAFEN, when, then, path: path ?? "" }
-      if (defer ?? true) Event.Tree.__queue__(tree, a)
-      else               Event.Tree.__flush__(tree, a)
-    },
-
-    /**
-     * @template T
-     * @param {hgEventTree} tree
-     * @param {string     } when
-     * @param {T          } what
-     * @param {{path ?: string, defer?: boolean}}
-     */
-    dispatch(tree, when, what, {path, defer}={}) {
-      /** @type {hgEventAction__Dispatch__<T>} */ 
-      const a = { action: DISPATCH, when, what, path: path ?? "" }
-      if (defer ?? true) Event.Tree.__queue__(tree, a)
-      else               Event.Tree.__flush__(tree, a)
-    },
-
-    /** @param {hgEventTree} tree */
-    poll(tree) {
-      tree.pending.splice(0).forEach(
-        a => Event.Tree.__flush__(tree, a)
-      )
-    },
-
-    /** 
-     * @param {hgEventTree       } tree
-     * @param {hgEventAction<any>} a
-     */
-    __queue__(tree, a) {
-      tree.pending.push(a)
-    },
-
-    /** 
-     * @param {hgEventTree       } tree
-     * @param {hgEventAction<any>} a
-     */
-    __flush__(tree, a) {
-      switch (a.action) {
-        case LISTEN  : Event.Tree.__onListen__  (tree, a); break;
-        case DEAFEN  : Event.Tree.__onDeafen__  (tree, a); break;
-        case DISPATCH: Event.Tree.__onDispatch__(tree, a); break;
-        default: throw new Error(`[Event.Tree.__flush__] unknown action '${a.action}'.`)
-      }
-    },
-
-    /** 
-     * @param {hgEventTree                 } tree
-     * @param {hgEventAction__Listen__<any>}
-     */
-    __onListen__  (tree, a) {
-      const node = Event.Node.__requireNode__(tree.root, a.path)
-      const list = Event.Node.__requireHandlers__(node , a.when)
-      if (list.includes(a.then)) {
-        console.warn(`[Event.Tree.__onListen__] handler with id '${a.then}' already exists.`)
-        return
-      }
-      list.push(a.then)
-    },
-
-    /** 
-     * @param {hgEventTree                 } tree
-     * @param {hgEventAction__Deafen__<any>} a
-     */
-    __onDeafen__  (tree, a) {
-      // deafen one handler with a given 'when' and 'then'
-             if (a.when !== undefined && a.then !== undefined) {
-        const node = Event.Node.__requestNode__(tree.root, a.path)
-        const list = Event.Node.__requestHandlers__(node , a.when)
-        if (list?.includes(a.then))
-          Id.release(list.splice(list.indexOf(a.then), 1)[0])
-
-      // deafen all handlers for a given 'when'
-      } else if(a.when !== undefined && a.then === undefined) {
-        const node = Event.Node.__requestNode__(tree.root, a.path)
-        const list = Event.Node.__requestHandlers__(node , a.when)
-        if (list) list.splice(0).forEach(id => {
-          Id.release(id)
-        })
-      
-      // deafen all handlers for a given 'then'
-      } else if(a.when === undefined && a.then !== undefined) {
-        const node = Event.Node.__requestNode__(tree.root, a.path)
-        if (node) Object.values(node.handlers).forEach(list => {
-          if (list.includes(a.then))
-            Id.release(list.splice(list.indexOf(a.then), 1)[0])
-        })
-
-      // deafen all handlers for a given 'path' recursively
-      } else if(a.when === undefined && a.then === undefined) {
-        const node = Event.Node.__requestNode__(tree.root, a.path)
-        if (node) Event.Node.__releaseNode__(node)
-      }
-    },
-
-    /** 
-     * @param {hgEventTree                   } tree
-     * @param {hgEventAction__Dispatch__<any>} a
-     */
-    __onDispatch__(tree, a) {
-      const node = Event.Node.__requestNode__(tree.root, a.path)
-      if (node) Event.Tree.__reDispatch__(
-        tree, 
-        node, 
-        a.path, 
-        a.when, 
-        a.what
-      )
-    },
-
-    /**
-     * @param {hgEventTree} tree
-     * @param {hgEventNode} node
-     * @param {string     } path
-     * @param {string     } when
-     * @param {any        } what
-     */
-    __reDispatch__(tree, node, path, when, what) {
-      Event.Node.__requestHandlers__(node, when)?.forEach(self => {
-        Id.resolve(self)?.(what, {tree, node, path, when, self})
-      })
-
-      Object.entries(node.children).forEach(([part, node]) => {
-        Event.Tree.__reDispatch__(
-          tree, 
-          node, 
-          path.split("/").concat(part).join("/"), 
-          when, 
-          what
-        )
-      })
-    }
+  off (when, then, defer=true) {
+    const a = { is: "event:off" , when, then }
+    if (defer) Event.__queue__(a)
+    else       Event.__flush__(a)
   },
 
-  /** 
-   * @template T
-   * @param {hgEventHandler<T>} then
-   * @returns {hgEventHandler<T>} 
-   */
+  emit(when, what, defer=true) {
+    const a = { is: "event:emit", when, what }
+    if (defer) Event.__queue__(a)
+    else       Event.__flush__(a)
+  },  
+
   once(then) {
-    return (what, {tree, node, path, when, self}) => {
-      then(what, {tree, node, path, when, self})
-      Event.Tree.deafen(tree, when, self, {path, defer: false})
+    return (what, { self, when }) => {
+      then(what, { self, when })
+      Event.deafen(when, self, false)
     }
+  },
+
+  poll() {
+    Event.__scheduled__.splice(0).forEach(
+      a => Event.__flush__(a)
+    )
+  },
+
+  __queue__(a) {
+    Event.__scheduled__.push(a)
+  },
+
+  __flush__(a) {
+    switch (a.is) {
+      case "event:on"  : return Event.__on__  (a);
+      case "event:off" : return Event.__off__ (a);
+      case "event:emit": return Event.__emit__(a);
+      default: throw new Error(`[Event.__flush__] unknown action '${a.is}'.`)
+    }
+  },
+
+  __on__  ({ when, then }) {
+    const list = Event.__requireListeners__(when)
+    if (list.includes(then))
+      throw new Error(`[Event.__on__] listener of type '${when}' with id '${then}' already exists.`)
+    list.push(then)
+  },
+
+  __off__ ({ when, then }) {
+    const list = Event.__requestListeners__(when)
+    if (!list?.includes(then))
+      throw new Error(`[Event.__off__] listener of type '${when}' with id '${then}' does not exist.`)
+    Id.release(list.splice(list.indexOf(then), 1)[0])
+  },
+
+  __emit__({ when, what }) {
+    Event.__requestListeners__(when)?.forEach(self => {
+      Id.resolve(self)(what, { self, when })
+    })
+  },
+
+  __requestListeners__(when) {
+    return Event.__listeners__[when]
+  },
+
+  __requireListeners__(when) {
+    let list = Event.__listeners__[when]
+    if (!list) Event.__listeners__[when] = (
+      list = []
+    )
+    return list
   }
 }
 
-/**
- * @typedef hgStage
- * 
- * @property {boolean               } configureDebug
- * @property {number                } configureWidth
- * @property {number                } configureHeight
- * @property {number                } configureUpdatesPerSecond
- * @property {number                } configureRendersPerSecond
- * @property {string                } configureLogicalBackground
- * @property {string                } configureVirtualBackground
- * @property {number                } [configureScaleIncrement]
- * @property {ImageSmoothingQuality } [configureImageSmoothing]
- * 
- * @property {hgId<HTMLCanvasElement>                } logicalCanvasElement
- * @property {hgId<OffscreenCanvas>                  } virtualCanvasElement
- * @property {hgId<CanvasRenderingContext2D>         } logicalCanvasContext
- * @property {hgId<OffscreenCanvasRenderingContext2D>} virtualCanvasContext
- * @property {number                                 } virtualScale
- * 
- * @property {hgEventTree} events
- * @property {hgScene    } [scene]
- * @property {hgKeyboard } keyboard
- * 
- * @property {number} millisPerUpdate
- * @property {number} millisPerRender
- * @property {number} updatesPerSecond
- * @property {number} rendersPerSecond
- * 
- * @property {number} averageMillisPerUpdate
- * @property {number} minimumMillisPerUpdate
- * @property {number} maximumMillisPerUpdate
- * 
- * @property {number} averageMillisPerRender
- * @property {number} minimumMillisPerRender
- * @property {number} maximumMillisPerRender
- * 
- * @property {number} updatesPerSecondAccumulator
- * @property {number} rendersPerSecondAccumulator
- * 
- * @property {number} averageMillisPerUpdateAccumulator
- * @property {number} minimumMillisPerUpdateAccumulator
- * @property {number} maximumMillisPerUpdateAccumulator
- * 
- * @property {number} averageMillisPerRenderAccumulator
- * @property {number} minimumMillisPerRenderAccumulator
- * @property {number} maximumMillisPerRenderAccumulator
- * 
- * @property {number} lastUpdate
- * @property {number} lastRender
- * @property {number} lastSecond
- */
+const Scene = {
+  new({
+    onAttach,
+    onDetach,
+    onUpdate,
+    onRender,
+
+    onKeyUp    ,
+    onKeyDown  ,
+    onMouseUp  ,
+    onMouseDown,
+    onMouseMove,
+    onWheelMove,
+  }) {
+    const scene = { }
+    if (onAttach   ) scene.onAttach    = Id.acquire(onAttach   )
+    if (onDetach   ) scene.onDetach    = Id.acquire(onDetach   )
+    if (onUpdate   ) scene.onUpdate    = Id.acquire(onUpdate   )
+    if (onRender   ) scene.onRender    = Id.acquire(onRender   )
+    if (onKeyUp    ) scene.onKeyUp     = Id.acquire(onKeyUp    )
+    if (onKeyDown  ) scene.onKeyDown   = Id.acquire(onKeyDown  )
+    if (onMouseUp  ) scene.onMouseUp   = Id.acquire(onMouseUp  )
+    if (onMouseDown) scene.onMouseDown = Id.acquire(onMouseDown)
+    if (onMouseMove) scene.onMouseMove = Id.acquire(onMouseMove)
+    if (onWheelMove) scene.onWheelMove = Id.acquire(onWheelMove)
+
+    return scene
+  },
+
+  __update__(scene, c) {
+    if (scene?.onUpdate) Id.resolve(scene.onUpdate)(c)
+  },
+
+  __render__(scene, c) {
+    if (scene?.onRender) Id.resolve(scene.onRender)(c)
+  },
+
+  __attach__(scene, c) {
+    if (scene?.onAttach) Id.resolve(scene.onAttach)(c)
+  },
+
+  __detach__(scene, c) {
+    if (scene?.onDetach) Id.resolve(scene.onDetach)(c)
+  },
+
+  __keyUp__    (scene, k) {
+    if (scene?.onKeyUp) Id.resolve(scene.onKeyUp)(k)
+  },
+
+  __keyDown__  (scene, k) {
+    if (scene?.onKeyDown) Id.resolve(scene.onKeyDown)(k)
+  },
+
+  __mouseUp__  (scene, m) {
+    if (scene?.onMouseUp) Id.resolve(scene.onMouseUp)(m)
+  },
+
+  __mouseDown__(scene, m) {
+    if (scene?.onMouseDown) Id.resolve(scene.onMouseDown)(m)
+  },
+
+  __mouseMove__(scene, m) {
+    if (scene?.onMouseMove) Id.resolve(scene.onMouseMove)(m)
+  },
+
+  __mouseWheel__(scene, m) {
+    if (scene?.onMouseWheel) Id.resolve(scene.onMouseWheel)(m)
+  },
+}
+
+
 
 const Stage = {
-  /** @type {"stage:resize"} */
-  ON_RESIZE: "stage:resize",
-  /** @type {"stage:change"} */
-  ON_CHANGE: "stage:change",
+  setup(o) {
+    if (Stage.__stage__) throw new Error(`[Stage.setup] stage is already configured.`)
 
-  /** @returns {hgStage} */
-  new({
-    dbg, // configureDebug
-    w  , // configureWidth
-    h  , // configureHeight
-    fps,
-    ups, // configureUpdatesPerSecond
-    rps, // configureRendersPerSecond
-    lbg, // configureLogicalBackground
-    vbg, // configureVirtualBackground
-    si , // configureScaleIncrement
-    is , // configureImageSmoothing
-    c  , // logicalCanvasElement
-  }={}) {
-    const configureDebug             = dbg ?? false
-    const configureWidth             = w   ??     0
-    const configureHeight            = h   ??     0
-    const configureUpdatesPerSecond  = ups ?? fps ?? 0
-    const configureRendersPerSecond  = rps ?? fps ?? 0
-    const configureLogicalBackground = lbg ?? "black"
-    const configureVirtualBackground = vbg ?? "white"
-    const configureScaleIncrement    = si
-    const configureImageSmoothing    = is
+    const configureWidth             = o?.w   ?? 0
+    const configureHeight            = o?.h   ?? 0
+    const configureFramesPerSecond   = o?.fps ?? 0
+    const configureLogicalBackground = o?.lbg ?? o?.bg ?? "black"
+    const configureVirtualBackground = o?.vbg ?? o?.bg ?? "white"
+    const configureImageSmoothing    = o?.is
+    const configureScaleIncrement    = o?.si
 
-    const millisPerUpdate = configureUpdatesPerSecond > 0 ? 1000 / configureUpdatesPerSecond : 0
-    const millisPerRender = configureRendersPerSecond > 0 ? 1000 / configureRendersPerSecond : 0
+    let logicalCanvasElement;
+    
+    switch (typeof o?.c) {
+      case "object"   : logicalCanvasElement =                         o.c ; break;
+      case "string"   : logicalCanvasElement = document.getElementById(o.c); break;
+      case "undefined": {
+        logicalCanvasElement = document.createElement("canvas")
+          logicalCanvasElement.style.position = "absolute"
+          logicalCanvasElement.style.top      = "0px"
+          logicalCanvasElement.style.left     = "0px"
+          logicalCanvasElement.style.width    = "100dvw"
+          logicalCanvasElement.style.height   = "100dvh"
+        document.body.appendChild(logicalCanvasElement)
+      }
+    }
 
-    /** @type {HTMLCanvasElement} */
-    const logicalCanvasElement = c ?? Canvas.__default__
-    const virtualCanvasElement  = new OffscreenCanvas(
-      configureWidth  || logicalCanvasElement.width, 
+    const virtualCanvasElement = new OffscreenCanvas(
+      configureWidth  || logicalCanvasElement.width,
       configureHeight || logicalCanvasElement.height
+    )
+    const logicalCanvasContext = logicalCanvasElement.getContext("2d")
+    const virtualCanvasContext = virtualCanvasElement.getContext("2d")
+
+    // image smoothing
+    logicalCanvasContext.imageSmoothingEnabled = !!configureImageSmoothing
+    virtualCanvasContext.imageSmoothingEnabled = !!configureImageSmoothing
+    if (!!configureImageSmoothing) {
+      logicalCanvasContext.imageSmoothingQuality = configureImageSmoothing
+      virtualCanvasContext.imageSmoothingQuality = configureImageSmoothing
+    }
+
+    // scale increment
+    let scale = Math.min(
+      logicalCanvasElement.width  / virtualCanvasElement.width,
+      logicalCanvasElement.height / virtualCanvasElement.height
+    )
+    if (configureScaleIncrement)
+      scale = Math.max(configureScaleIncrement, Math.floor(scale / configureScaleIncrement) * configureScaleIncrement)
+
+    const stage = {
+      configureWidth            ,
+      configureHeight           ,
+      configureFramesPerSecond  ,
+      configureLogicalBackground,
+      configureVirtualBackground,
+      configureImageSmoothing   ,
+      configureScaleIncrement   ,
+
+      logicalCanvasElement: Id.acquire(logicalCanvasElement),
+      virtualCanvasElement: Id.acquire(virtualCanvasElement),
+      logicalCanvasContext: Id.acquire(logicalCanvasContext),
+      virtualCanvasContext: Id.acquire(virtualCanvasContext),
+      scale,
+    }
+
+    new ResizeObserver(Stage.__resize__).observe(logicalCanvasElement)
+
+    Event.on("stage:change", Stage.__onChange__)
+    Event.on("stage:resize", Stage.__onResize__)
+
+    window.onblur                      = () => Event.emit("native:blur")
+    window.onkeyup                     = ke => Event.emit("native:keyup"    , ke)
+    window.onkeydown                   = ke => Event.emit("native:keydown"  , ke)
+    logicalCanvasElement.onmouseup     = me => Event.emit("native:mouseup"  , me)
+    logicalCanvasElement.onmousedown   = me => Event.emit("native:mousedown", me)
+    logicalCanvasElement.onmousemove   = me => Event.emit("native:mousemove", me)
+    logicalCanvasElement.oncontextmenu = me => me.preventDefault()
+
+    requestAnimationFrame(
+      t0 => requestAnimationFrame(
+        t1 => requestAnimationFrame(
+          t2 => Stage.__animate__(t0, t1, t2))))
+
+    return Stage.__stage__ = stage
+  },
+
+  logicalToVirtual([x, y]) {
+    const [lw, lh] = Stage.getLogicalSize()
+    const [vw, vh] = Stage.getVirtualSize()
+    const scale    = Stage.__stage__.scale
+    return Vector2.new(
+      (x - lw / 2) / scale + vw / 2,
+      (y - lh / 2) / scale + vh / 2
+    )
+  },
+
+  virtualToLogical([x, y]) {
+    const [lw, lh] = Stage.getLogicalSize()
+    const [vw, vh] = Stage.getVirtualSize()
+    const scale    = Stage.__stage__.scale
+    return Vector2.new(
+      (x - vw / 2) * scale + lw / 2,
+      (y - vh / 2) * scale + lh / 2
+    )
+  },
+
+  getLogicalSize() {
+    const logicalCanvas = Id.resolve(Stage.__stage__.logicalCanvasElement)
+    return Vector2.new(
+      logicalCanvas.width, 
+      logicalCanvas.height
+    )
+  },
+
+  getVirtualSize() {
+    const virtualCanvas = Id.resolve(Stage.__stage__.virtualCanvasElement)
+    return Vector2.new(
+      virtualCanvas.width, 
+      virtualCanvas.height
+    )
+  },
+
+  cue(scene) {
+    Event.emit("stage:change", scene)
+  },
+
+  __resize__() {
+    const logicalCanvas = Id.resolve(Stage.__stage__.logicalCanvasElement)
+    Event.emit("stage:resize", Vector2.new(
+      logicalCanvas.getBoundingClientRect().width,
+      logicalCanvas.getBoundingClientRect().height
+    ))
+  },
+
+  __update__(t, dt) {
+    Event.poll()
+
+    const [lw, lh] = Stage.getLogicalSize()
+    const [vw, vh] = Stage.getVirtualSize()
+    const scale    = Stage.__stage__.scale
+
+    Scene.__update__(Stage.__stage__.scene, {
+      lw, lh, vw, vh, t, dt, w: vw, h: vh, scale
+    })
+  },
+
+  __render__(t, dt) {
+    const h = Id.resolve(Stage.__stage__.logicalCanvasContext)
+    const g = Id.resolve(Stage.__stage__.virtualCanvasContext)
+
+    const [lw, lh] = Stage.getLogicalSize()
+    const [vw, vh] = Stage.getVirtualSize()
+    const scale    = Stage.__stage__.scale
+
+    h.resetTransform()
+    h.fillStyle = Stage.__stage__.configureLogicalBackground
+    h.fillRect(0, 0, lw, lh)
+
+    g.resetTransform()
+    g.fillStyle = Stage.__stage__.configureVirtualBackground
+    g.fillRect(0, 0, vw, vh)
+
+
+    Scene.__render__(Stage.__stage__.scene, {
+      lw, lh, vw, vh, t, dt, w: vw, h: vh, scale, g
+    })
+
+    h.translate(
+      lw / 2 - vw / 2 * scale,
+      lh / 2 - vh / 2 * scale
+    )
+    h.scale(scale, scale)
+    h.drawImage(g.canvas, 0, 0)
+  },
+
+  __animate__(t0, t1, t2) {
+    const t  = (t2 - t0) / 1000
+    const dt = (t2 - t1) / 1000
+
+    Stage.__update__(t, dt)
+    Stage.__render__(t, dt)
+
+    requestAnimationFrame(t3 => Stage.__animate__(t0, t2, t3))
+  },
+
+  __onChange__(scene) {
+    Scene.__detach__(Stage.__stage__.scene)
+    Stage.__stage__.scene = scene
+    Scene.__attach__(Stage.__stage__.scene)
+  },
+
+  __onResize__([w,h]) {
+    // release resources
+    Id.release(Stage.__stage__.virtualCanvasElement)
+    Id.release(Stage.__stage__.logicalCanvasContext)
+    Id.release(Stage.__stage__.virtualCanvasContext)
+
+    const logicalCanvasElement = Id.resolve(Stage.__stage__.logicalCanvasElement)
+    logicalCanvasElement.width  = w
+    logicalCanvasElement.height = h
+
+    const virtualCanvasElement = new OffscreenCanvas(
+      Stage.__stage__.configureWidth  || logicalCanvasElement.width,
+      Stage.__stage__.configureHeight || logicalCanvasElement.height
     )
 
     const logicalCanvasContext = logicalCanvasElement.getContext("2d")
     const virtualCanvasContext = virtualCanvasElement.getContext("2d")
 
-    // configure scale
-    let virtualScale = Math.min(
+    // image smoothing
+    logicalCanvasContext.imageSmoothingEnabled = !!Stage.__stage__.configureImageSmoothing
+    virtualCanvasContext.imageSmoothingEnabled = !!Stage.__stage__.configureImageSmoothing
+    if (!!Stage.__stage__.configureImageSmoothing) {
+      logicalCanvasContext.imageSmoothingQuality = Stage.__stage__.configureImageSmoothing
+      virtualCanvasContext.imageSmoothingQuality = Stage.__stage__.configureImageSmoothing
+    }
+
+    // scale increment
+    let scale = Math.min(
       logicalCanvasElement.width  / virtualCanvasElement.width,
       logicalCanvasElement.height / virtualCanvasElement.height
     )
-    if (configureScaleIncrement)
-      virtualScale = Math.floor(virtualScale / configureScaleIncrement) * configureScaleIncrement
+    if (Stage.__stage__.configureScaleIncrement)
+      scale = Math.max(Stage.__stage__.configureScaleIncrement, Math.floor(scale / Stage.__stage__.configureScaleIncrement) * Stage.__stage__.configureScaleIncrement)
 
-    // configure image smoothing
-    logicalCanvasContext.imageSmoothingEnabled = !!configureImageSmoothing
-    virtualCanvasContext.imageSmoothingEnabled = !!configureImageSmoothing
-    if (configureImageSmoothing) {
-      logicalCanvasContext.imageSmoothingQuality = configureImageSmoothing
-      virtualCanvasContext.imageSmoothingQuality = configureImageSmoothing
-    }
-
-    const events = Event.Tree.new()
-
-    
-    const stage = {
-      configureDebug,
-      configureWidth,
-      configureHeight,
-      configureUpdatesPerSecond,
-      configureRendersPerSecond,
-      configureLogicalBackground,
-      configureVirtualBackground,
-      configureScaleIncrement,
-      configureImageSmoothing,
-      logicalCanvasElement: Id.acquire(logicalCanvasElement),
-      virtualCanvasElement: Id.acquire(virtualCanvasElement),
-      logicalCanvasContext: Id.acquire(logicalCanvasContext),
-      virtualCanvasContext: Id.acquire(virtualCanvasContext),
-      virtualScale,
-      events,
-
-      millisPerUpdate,
-      millisPerRender,
-      updatesPerSecond: 0,
-      rendersPerSecond: 0,
-
-      averageMillisPerUpdate: 0,
-      minimumMillisPerUpdate: 0,
-      maximumMillisPerUpdate: 0,
-
-      averageMillisPerRender: 0,
-      minimumMillisPerRender: 0,
-      maximumMillisPerRender: 0,
-
-      updatesPerSecondAccumulator: 0,
-      rendersPerSecondAccumulator: 0,
-
-      averageMillisPerUpdateAccumulator: 0,
-      minimumMillisPerUpdateAccumulator: Number.POSITIVE_INFINITY,
-      maximumMillisPerUpdateAccumulator: 0,
-
-      averageMillisPerRenderAccumulator: 0,
-      minimumMillisPerRenderAccumulator: Number.POSITIVE_INFINITY,
-      maximumMillisPerRenderAccumulator: 0,
-
-      lastUpdate: 0,
-      lastRender: 0,
-      lastSecond: 0,
-    }
-    
-    new ResizeObserver(() => Stage.__resize__(stage)).observe(logicalCanvasElement)
-
-    Stage.listen(stage, Stage.ON_RESIZE, (resize) => Stage.__onResize__(stage, resize))
-    Stage.listen(stage, Stage.ON_CHANGE, (change) => Stage.__onChange__(stage, change))
-    Stage.listen(stage, Keyboard.ON_KEY_DOWN, (ke) => Stage.__onKeyDown__(stage, ke))
-    Stage.listen(stage, Keyboard.ON_KEY_UP  , (ke) => Stage.__onKeyUp__  (stage, ke))
-
-
-    stage.keyboard = Keyboard.new(stage)
-
-    requestAnimationFrame(firstFrame => {
-      stage.lastUpdate = firstFrame
-      stage.lastRender = firstFrame
-      stage.lastSecond = firstFrame
-      requestAnimationFrame(thisFrame => {
-        Stage.__loop__(stage, firstFrame, thisFrame)
-      })
-    })
-
-    return stage
-  },
-
-  /**
-   * @param {hgStage            } stage
-   * @param {hgScene | undefined} scene
-   */
-  setScene(stage, scene) {
-    Stage.dispatch(stage, Stage.ON_CHANGE, scene)
-  },
-
-  /**
-   * @template T
-   * @param {hgStage          } stage
-   * @param {string           } when
-   * @param {hgEventHandler<T>} then
-   * @param {{path ?: string, defer?: boolean}}
-   */
-  listen(stage, when, then, {path, defer}={}) {
-    Event.Tree.listen(stage.events, when, then, {path, defer})
-  },
-
-  /**
-   * @template T
-   * @param {hgStage                } stage
-   * @param {string                 } when
-   * @param {hgId<hgEventHandler<T>>} then
-   * @param {{path ?: string, defer?: boolean}}
-   */
-  deafen(stage, when, then, {path, defer}={}) {
-    Event.Tree.deafen(stage.events, when, then, {path, defer})
-  },
-
-  /**
-   * @template T
-   * @param {hgStage            } stage
-   * @param {string             } when
-   * @param {T                  } what
-   * @param {{path ?: string, defer?: boolean}}
-   */
-  dispatch(stage, when, what, {path, defer}={}) {
-    Event.Tree.dispatch(stage.events, when, what, {path, defer})
-  },
-
-  /** @param {hgStage} stage */
-  poll(stage) {
-    Event.Tree.poll(stage.events)
-  },
-
-  /** @param {hgStage} stage */
-  getLogicalCanvasElement(stage) {
-    return Id.resolve(stage.logicalCanvasElement)
-  },
-
-  /** @param {hgStage} stage */
-  getVirtualCanvasElement(stage) {
-    return Id.resolve(stage.virtualCanvasElement)
-  },
-
-  /** @param {hgStage} stage */
-  getLogicalCanvasContext(stage) {
-    return Id.resolve(stage.logicalCanvasContext)
-  },
-
-  /** @param {hgStage} stage */
-  getVirtualCanvasContext(stage) {
-    return Id.resolve(stage.virtualCanvasContext)
-  },
-
-  /** @param {hgStage} stage */
-  getLogicalSize(stage) {
-    const lce = Stage.getLogicalCanvasElement(stage)
-    return Vector2.new(
-      lce.width,
-      lce.height
-    )
-  },
-
-  /** @param {hgStage} stage */
-  getVirtualSize(stage) {
-    const vce = Stage.getVirtualCanvasElement(stage)
-    return Vector2.new(
-      vce.width,
-      vce.height
-    )
-  },
-
-  /** @param {hgStage} stage */
-  __resize__(stage) {
-    const lce = Stage.getLogicalCanvasElement(stage)
-    const w   = lce.getBoundingClientRect().width
-    const h   = lce.getBoundingClientRect().height
-    Stage.dispatch(stage, Stage.ON_RESIZE, [w, h])
-  },
-
-  /** 
-   * @param {hgStage} stage
-   * @param {Vector2}
-   */
-  __onResize__(stage, [w, h]) {
-    const lce = Stage.getLogicalCanvasElement(stage)
-    lce.width  = w
-    lce.height = h
-    
-    const vce = new OffscreenCanvas(
-      stage.configureWidth  || w, 
-      stage.configureHeight || h
-    )
-    Id.release(stage.virtualCanvasElement)
-    stage.virtualCanvasElement = Id.acquire(vce)
-
-    const lcc = lce.getContext("2d")
-    const vcc = vce.getContext("2d")
-    Id.release(stage.logicalCanvasContext)
-    Id.release(stage.virtualCanvasContext)
-    stage.logicalCanvasContext = Id.acquire(lcc)
-    stage.virtualCanvasContext = Id.acquire(vcc)
-
-    lcc.imageSmoothingEnabled = !!stage.configureImageSmoothing
-    vcc.imageSmoothingEnabled = !!stage.configureImageSmoothing
-    if (stage.configureImageSmoothing) {
-      lcc.imageSmoothingQuality = stage.configureImageSmoothing
-      vcc.imageSmoothingQuality = stage.configureImageSmoothing
-    }
-
-    stage.virtualScale = Math.min(
-      lce.width  / vce.width,
-      lce.height / vce.height
-    )
-    if (stage.configureScaleIncrement)
-      stage.virtualScale = Math.floor(stage.virtualScale / stage.configureScaleIncrement) * stage.configureScaleIncrement
-  },
-
-  /**
-   * @param {hgStage} stage
-   * @param {hgScene} change
-   */
-  __onChange__(stage, change) {
-    Scene.__detach__(stage, stage.scene)
-    stage.scene = change
-    Scene.__attach__(stage, stage.scene)
-  },
-
-  __onKeyUp__(stage, key) {
-    Scene.__keyUp__(key, stage.scene)
-  },
-
-  __onKeyDown__(stage, key) {
-    Scene.__keyDown__(key, stage.scene)
-  },
-
-  /** 
-   * @param {hgStage} stage 
-   * @param {number } t
-   * @param {number } dt
-   */
-  __update__(stage, t, dt) {
-    Stage.poll(stage)
-    const [vw, vh] = Stage.getVirtualSize(stage)
-    Scene.__update__({stage, w: vw, h: vh, t, dt}, stage.scene)
-  },
-
-  /** 
-   * @param {hgStage} stage
-   * @param {number } t
-   * @param {number } dt
-   */
-  __render__(stage, t, dt) {
-    const [lw, lh] = Stage.getLogicalSize(stage)
-    const [vw, vh] = Stage.getVirtualSize(stage)
-    const  vs      = stage.virtualScale
-
-    const h = Stage.getLogicalCanvasContext(stage)
-    const g = Stage.getVirtualCanvasContext(stage)
-
-    h.resetTransform()
-    h.fillStyle = stage.configureLogicalBackground
-    h.fillRect(0, 0, lw, lh)
-
-    g.resetTransform()
-    g.fillStyle = stage.configureVirtualBackground
-    g.fillRect(0, 0, vw, vh)
-
-    Scene.__render__({stage, w: vw, h: vh, g, t, dt}, stage.scene)
-
-    h.translate(
-      (lw - vw * vs) / 2,
-      (lh - vh * vs) / 2
-    )
-    h.scale(vs, vs)
-    h.drawImage(g.canvas, 0, 0)
-  },
-
-  /** 
-   * @param {hgStage} stage 
-   * @param {number } t0
-   * @param {number } t1
-   * @param {number } t2
-   */
-  __loop__(stage, firstFrame, thisFrame) {
-    if (thisFrame - stage.lastUpdate >= stage.millisPerUpdate) {
-      const t  = (thisFrame -       firstFrame) / 1000
-      const dt = (thisFrame - stage.lastUpdate) / 1000
-
-
-
-      const a = performance.now()
-      Stage.__update__(stage, t, dt)
-      const b = performance.now()
-
-      const updateMillis = b - a
-      stage.averageMillisPerUpdateAccumulator += updateMillis
-      stage.minimumMillisPerUpdateAccumulator  = Math.min(stage.minimumMillisPerUpdateAccumulator, updateMillis)
-      stage.maximumMillisPerUpdateAccumulator  = Math.max(stage.maximumMillisPerUpdateAccumulator, updateMillis)
-      
-      stage.updatesPerSecondAccumulator += 1
-
-      if (!stage.millisPerUpdate) { 
-        stage.lastUpdate = thisFrame
-      } else {
-        if (1000 * dt > 10 * stage.millisPerUpdate) {
-          const delta = Math.floor(1000 * dt / stage.millisPerUpdate)
-          console.warn(`[Stage.__loop__] updates are behind by ${delta} frames, fast-forwarding.`)
-
-          stage.lastUpdate += delta * stage.millisPerUpdate
-        } else {
-          stage.lastUpdate +=         stage.millisPerUpdate
-        }
-      }
-    }
-
-    if (thisFrame - stage.lastRender >= stage.millisPerRender) {
-      const t  = (thisFrame -       firstFrame) / 1000
-      const dt = (thisFrame - stage.lastRender) / 1000
-
-      const a = performance.now()
-      Stage.__render__(stage, t, dt)
-      const b = performance.now()
-
-      const renderMillis = b - a
-      stage.averageMillisPerRenderAccumulator += renderMillis
-      stage.minimumMillisPerRenderAccumulator  = Math.min(stage.minimumMillisPerRenderAccumulator, renderMillis)
-      stage.maximumMillisPerRenderAccumulator  = Math.max(stage.maximumMillisPerRenderAccumulator, renderMillis)
-      
-      stage.rendersPerSecondAccumulator += 1
-
-      if (!stage.millisPerRender) { 
-        stage.lastRender = thisFrame
-      } else {
-        if (1000 * dt > 10 * stage.millisPerRender) {
-          const delta = Math.floor(1000 * dt / stage.millisPerRender)
-          console.warn(`[Stage.__loop__] renders are behind by ${delta} frames, fast-forwarding.`)
-
-          stage.lastRender += delta * stage.millisPerRender
-        } else {
-          stage.lastRender +=         stage.millisPerRender
-        }
-      }
-    }
-
-    if (thisFrame - stage.lastSecond >= 1000) {
-      stage.updatesPerSecond = stage.updatesPerSecondAccumulator
-      stage.rendersPerSecond = stage.rendersPerSecondAccumulator
-
-      stage.averageMillisPerUpdate = stage.averageMillisPerUpdateAccumulator / stage.updatesPerSecondAccumulator
-      stage.minimumMillisPerUpdate = stage.minimumMillisPerUpdateAccumulator
-      stage.maximumMillisPerUpdate = stage.maximumMillisPerUpdateAccumulator
-
-      stage.averageMillisPerRender = stage.averageMillisPerRenderAccumulator / stage.rendersPerSecondAccumulator
-      stage.minimumMillisPerRender = stage.minimumMillisPerRenderAccumulator
-      stage.maximumMillisPerRender = stage.maximumMillisPerRenderAccumulator
-
-      stage.updatesPerSecondAccumulator = 0
-      stage.rendersPerSecondAccumulator = 0
-
-      stage.averageMillisPerUpdateAccumulator = 0
-      stage.minimumMillisPerUpdateAccumulator = Number.POSITIVE_INFINITY
-      stage.maximumMillisPerUpdateAccumulator = 0
-
-      stage.averageMillisPerRenderAccumulator = 0
-      stage.minimumMillisPerRenderAccumulator = Number.POSITIVE_INFINITY
-      stage.maximumMillisPerRenderAccumulator = 0
-
-      stage.lastSecond = thisFrame
-    }
-
-    requestAnimationFrame(nextFrame => Stage.__loop__(stage, firstFrame, nextFrame))
-  },
+    // update instance
+    Stage.__stage__.virtualCanvasElement = Id.acquire(virtualCanvasElement)
+    Stage.__stage__.logicalCanvasContext = Id.acquire(logicalCanvasContext)
+    Stage.__stage__.virtualCanvasContext = Id.acquire(virtualCanvasContext)
+    Stage.__stage__.scale                = scale
+  }
 }
 
-/**
- * @typedef hgKeyboard
- * @property {hgStage} stage
- * @property {Record<string, boolean>} keys
- */
 const Keyboard = {
-  ON_NATIVE_KEY_UP  : "keyboard:native-keyup",
-  ON_NATIVE_KEY_DOWN: "keyboard:native-keydown",
+  __keys__: { },
 
-  ON_KEY_UP  : "keyboard:keyup"  ,
-  ON_KEY_DOWN: "keyboard:keydown",
-
-  /** 
-   * @param {hgStage} stage
-   * @returns {hgKeyboard} 
-   */
-  new(stage) {
-    const kb = {
-      stage,
-      keys: { },
-    }
-
-    Stage.listen(stage, Keyboard.ON_NATIVE_KEY_UP  , ke => Keyboard.__onNativeKeyUp__  (kb, ke))
-    Stage.listen(stage, Keyboard.ON_NATIVE_KEY_DOWN, ke => Keyboard.__onNativeKeyDown__(kb, ke))
-    
-    document.onkeyup   = ke => Stage.dispatch(stage, Keyboard.ON_NATIVE_KEY_UP  , Id.acquire(ke))
-    document.onkeydown = ke => Stage.dispatch(stage, Keyboard.ON_NATIVE_KEY_DOWN, Id.acquire(ke))
-
-    return kb
+  isKeyUp  (k) {
+    return  !Keyboard.__keys__[k]
   },
 
-  isKeyUp  (kb, key) {
-    return  !kb.keys[key]
+  isKeyDown(k) {
+    return !!Keyboard.__keys__[k]
   },
 
-  isKeyDown(kb, key) {
-    return !!kb.keys[key]
-  },
-  
-  /**
-   * @param {hgKeyboard} kb 
-   * @param {hgId<KeyboardEvent>} ke 
-   */
-  __onNativeKeyUp__  (kb, ke) {
-    const key = Id.resolve(ke).key
-    Id.release(ke)
-    // is key down?
-    if (!!kb.keys[key]) {
-      kb.keys[key] = false
-      Stage.dispatch(kb.stage, Keyboard.ON_KEY_UP, key, {defer: false})
+  __keyUp__  (ke) {
+    if (Keyboard.isKeyDown(ke.key)) {
+      Keyboard.__keys__[ke.key] = false
+      Event.emit("keyboard:keyup", ke.key, false)
     }
   },
 
-  /**
-   * @param {hgKeyboard} kb 
-   * @param {hgId<KeyboardEvent>} ke 
-   */
-  __onNativeKeyDown__(kb, ke) {
-    const key = Id.resolve(ke).key
-    // is key up?
-    if ( !kb.keys[key]) {
-      kb.keys[key] = true
-      Stage.dispatch(kb.stage, Keyboard.ON_KEY_DOWN, key, {defer: false})
-    }
-  },
+  __keyDown__(ke) {
+    if (Keyboard.isKeyUp(ke.key)) {
+      Keyboard.__keys__[ke.key] = true
+      Event.emit("keyboard:keydown", ke.key, false)
+    } 
+  },  
+
+  __blur__() {
+    Object.entries(Keyboard.__keys__).forEach(([key, isDown]) => {
+      if (isDown) {
+        Keyboard.__keys__[key] = false
+        Event.emit("keyboard:keyup", key, false)
+      }
+    })
+  }
 }
 
-/**
- * @typedef hgInput
- * @property {Record<string, boolean>} keyboardKeys
- * @property {Record<number, boolean>} mouseButtons
- * 
- */
 
-const Input = {
+Event.on("native:keyup"    , Keyboard.__keyUp__  )
+Event.on("native:keydown"  , Keyboard.__keyDown__)
+Event.on("keyboard:keyup"  , k  => Scene.__keyUp__  (Stage.__stage__.scene, k))
+Event.on("keyboard:keydown", k  => Scene.__keyDown__(Stage.__stage__.scene, k))
 
+const Mouse = {
+  __buttons__: { },  
+  __logical__: Vector2.new(),
+  __virtual__: Vector2.new(),
+
+  getLogicalMouse() {
+    return Mouse.__logical__
+  },
+
+  getVirtualMouse() {
+    return Mouse.__virtual__
+  },
+
+  isButtonUp  (b) {
+    return  !Mouse.__buttons__[b]
+  },
+
+  isButtonDown(b) {
+    return !!Mouse.__buttons__[b]
+  },
+
+  __mouseUp__  (me) {
+    Mouse.__virtual__ = Stage.logicalToVirtual(Mouse.__logical__ = Vector2.new(
+      me.offsetX, 
+      me.offsetY
+    ))
+
+    if (Mouse.isButtonDown(me.button)) {
+      Mouse.__buttons__[me.button] = false
+      Event.emit("mouse:mouseup", me.button, false)
+    }
+  },
+
+  __mouseDown__(me) {
+    Mouse.__virtual__ = Stage.logicalToVirtual(Mouse.__logical__ = Vector2.new(
+      me.offsetX, 
+      me.offsetY
+    ))
+
+    if (Mouse.isButtonUp(me.button)) {
+      Mouse.__buttons__[me.button] = true
+      Event.emit("mouse:mousedown", me.button, false)
+    }
+  },
+
+  __mouseMove__(me) {
+    Mouse.__virtual__ = Stage.logicalToVirtual(Mouse.__logical__ = Vector2.new(
+      me.offsetX, 
+      me.offsetY
+    ))
+
+    Event.emit("mouse:mousemove", Mouse.__virtual__, false)
+  },
+
+  __blur__() {
+    Object.entries(Mouse.__buttons__).forEach(([button, isDown]) => {
+      if (isDown) {
+        Mouse.__buttons__[button] = false
+        Event.emit("mouse:mouseup", button, false)
+      }
+    })
+  }
 }
 
-/** 
- * @typedef hgUpdateContext
- * @property {hgStage} stage
- * @property {number } w
- * @property {number } h
- * @property {number } t
- * @property {number } dt
- */
+const Asset = {
+  __cache__: { },
 
-/** 
- * @typedef hgRenderContext
- * @property {hgStage} stage
- * @property {number } w
- * @property {number } h
- * @property {OffscreenCanvasRenderingContext2D} g
- * @property {number } t
- * @property {number } dt
- */
+  new(is, where, id) {
+    return { is, where, id }
+  },
 
-/** @typedef {(stage: hgStage) => void} hgScene__onAttach__ */
-/** @typedef {(stage: hgStage) => void} hgScene__onDetach__ */
-/** @typedef {(resize: hgVector2) => void} hgScene__onResize__ */
-/** @typedef {(key: string) => void} hgScene__onKeyUp__ */
-/** @typedef {(key: string) => void} hgScene__onKeyDown__ */
-/** @typedef {(context: hgUpdateContext) => void} hgScene__onUpdate__ */
-/** @typedef {(context: hgRenderContext) => void} hgScene__onRender__ */
+  Image(where, id) {
+    return Asset.new("asset:image", where, id)
+  },
 
-/** 
- * @typedef hgScene 
- * @property {boolean} [updateable]
- * @property {boolean} [renderable]
- * @property {hgId<hgScene__onAttach__>} [onAttach]
- * @property {hgId<hgScene__onDetach__>} [onDetach]
- * @property {hgId<hgScene__onResize__>} [onResize]
- * @property {hgId<hgScene__onKeyUp__  >} [onKeyUp  ]
- * @property {hgId<hgScene__onKeyDown__>} [onKeyDown]
- * @property {hgId<hgScene__onUpdate__>} [onUpdate]
- * @property {hgId<hgScene__onRender__>} [onRender]
- */
+  Audio(where, id) {
+    return Asset.new("asset:audio", where, id)
+  },
 
-/**
- * @typedef hgSceneOptions
- * @property {boolean} [updateable]
- * @property {boolean} [renderable]
- * @property {hgScene__onAttach__} [onAttach]
- * @property {hgScene__onDetach__} [onDetach]
- * @property {hgScene__onResize__} [onResize]
- * @property {hgScene__onUpdate__} [onUpdate]
- * @property {hgScene__onRender__} [onRender]
- * @property {hgScene__onKeyUp__ } [onKeyUp  ]
- * @property {hgScene__onKeyDown__} [onKeyDown]
- */
+  Text(where, id) {
+    return Asset.new("asset:text", where, id)
+  },
 
+  Blob(where, id) {
+    return Asset.new("asset:blob", where, id)
+  },
 
-const Scene = {
-  /**
-   * @param {hgSceneOptions}
-   * @returns {hgScene}
-   */
-  new({
-    updateable,
-    renderable,
-    onAttach,
-    onDetach,
-    onKeyUp  ,
-    onKeyDown,
-    onUpdate,
-    onRender,
-  }) {
-    const scene = { 
-      updateable,
-      renderable,
+  Json(where, id) {
+    return Asset.new("asset:json", where, id)
+  },
+
+  async loadImage(a) {
+    return new Promise((res, rej) => {
+      const image = new Image()
+      image.onerror = () => rej(                       )
+      image.onload  = () => res(Id.acquire(image, a.id))
+      image.src = a.where
+    })
+  },
+
+  async loadAudio(a) {
+    return new Promise((res, rej) => {
+      const audio = new Audio()
+      audio.onerror = () => rej(                       )
+      audio.onload  = () => res(Id.acquire(audio, a.id))
+      audio.src = a.where
+    })
+  },
+
+  async loadText(a) {
+    return new Promise((res, rej) => {
+      fetch(a.where).then(r => r.text()).then(t => res(Id.acquire(t, a.id)))
+    })
+  },
+
+  async loadBlob(a) {
+    return new Promise((res, rej) => {
+      fetch(a.where).then(r => r.blob()).then(b => res(Id.acquire(b, a.id)))
+    })
+  },
+
+  async loadJson(a) {
+    return new Promise((res, rej) => {
+      fetch(a.where).then(r => r.json()).then(j => res(Id.acquire(j, a.id)))
+    })
+  },
+
+  load(a) {
+    switch (a.is) {
+      case "asset:image": return Asset.loadImage(a);
+      case "asset:audio": return Asset.loadAudio(a);
+      case "asset:text" : return Asset.loadText(a);
+      case "asset:blob" : return Asset.loadBlob(a);
+      case "asset:json" : return Asset.loadJson(a);
+      default: throw new Error(`[Asset.load] unknown asset type '${a.is}'.`)
+    }
+  },
+
+  loadAll(...a) {
+    return Promise.all(a.map(Asset.load))
+  }
+}
+
+const Atlas = {
+  __cache__: new Map(),
+
+  new(image, rows, cols) {
+    return {
+      image, rows, cols
+    }
+  },
+
+  from(id, rows, cols) {
+    return Atlas.new(Id.resolve(id), rows, cols)
+  },
+
+  draw({g}, a, i, {x, y, w, h, flip, flop, color}={}) {
+
+    g.save()
+
+    i ??= 0
+
+    let row = Math.floor(i / a.cols)
+    let col = Math.floor(i % a.cols)
+
+    let sw = Math.floor(a.image.width  / a.cols)
+    let sh = Math.floor(a.image.height / a.rows)
+    let sx = col * sw
+    let sy = row * sh
+
+    let dw = w ?? sw
+    let dh = h ?? sh
+    let dx = x ?? 0
+    let dy = y ?? 0
+
+    g.translate(dx, dy)
+    if (flip) { g.translate(dw, 0); g.scale(-1, 1) }
+    if (flop) { g.translate(0, dh); g.scale(1, -1) }
+
+    let image = a.image
+
+    if (color) {
+      const c = new OffscreenCanvas(a.image.width, a.image.height)
+      const g = c.getContext("2d")
+
+      g.drawImage(a.image, 0, 0)
+
+      g.globalCompositeOperation = "source-in"
+      g.fillStyle = color
+      g.fillRect(0, 0, a.image.width, a.image.height)
+
+      image = c
     }
 
-    if (onAttach) scene.onAttach = Id.acquire(onAttach)
-    if (onDetach) scene.onDetach = Id.acquire(onDetach)
-    if (onUpdate) scene.onUpdate = Id.acquire(onUpdate)
-    if (onRender) scene.onRender = Id.acquire(onRender)
-    if (onKeyUp  ) scene.onKeyUp   = Id.acquire(onKeyUp  )
-    if (onKeyDown) scene.onKeyDown = Id.acquire(onKeyDown)
-
-    return scene
+    g.drawImage(
+      image,
+      sx, sy, sw, sh,
+       0,  0, dw, dh
+    )
+    g.restore()
   },
 
-  /** @param {hgScene | undefined} scene */
-  isUpdateable(scene) {
-    return Boolean(scene && (scene.updateable ?? true) && scene.onUpdate)
-  },
+  paint(a, p) {
+    const canvas = new OffscreenCanvas(a.image.width, a.image.height)
 
-  /** @param {hgScene | undefined} scene */
-  isRenderable(scene) {
-    return Boolean(scene && (scene.renderable ?? true) && scene.onRender)
-  },
+    const context = canvas.getContext("2d")
 
-  /** 
-   * @param {hgStage} stage
-   * @param {hgScene} scene 
-   */
-  __attach__(stage, scene) {
-    if (scene?.onAttach) Id.resolve(scene.onAttach)(stage)
-  },
-
-  /** 
-   * @param {hgStage} stage
-   * @param {hgScene} scene 
-   */
-  __detach__(stage, scene) {
-    if (scene?.onDetach) Id.resolve(scene.onDetach)(stage)
-  },
-
-  /** 
-   * @param {hgVector2} resize
-   * @param {hgScene} scene 
-   */
-  __resize__(resize, scene) {
-    if (scene?.onResize) Id.resolve(scene.onResize)(resize)
-  },
-
-  /**
-   * @param {string} key 
-   * @param {hgScene} scene 
-   */
-  __keyUp__(key, scene) {
-    if (scene?.onKeyUp  ) Id.resolve(scene.onKeyUp  )(key)
-  },
-
-  /**
-   * @param {string} key 
-   * @param {hgScene} scene 
-   */
-  __keyDown__(key, scene) {
-    if (scene?.onKeyDown) Id.resolve(scene.onKeyDown)(key)
-  },
-
-  /**
-   * @param {hgUpdateContext    } context
-   * @param {hgScene | undefined} scene
-   */
-  __update__(context, scene) {
-    if (Scene.isUpdateable(scene))
-      Id.resolve(scene.onUpdate)(context)
-  },
-
-  /**
-   * @param {hgRenderContext    } context
-   * @param {hgScene | undefined} scene
-   */
-  __render__(context, scene) {
-    if (Scene.isRenderable(scene))
-      Id.resolve(scene.onRender)(context)
-  },
+    const data = context.getImageData(0, 0, a.image.width, a.image.height)
+  }
 }
 
-console.log(Version.toString(VERSION))
+
+Event.on("native:mouseup"  , Mouse.__mouseUp__  )
+Event.on("native:mousedown", Mouse.__mouseDown__)
+Event.on("native:mousemove", Mouse.__mouseMove__)
+Event.on("mouse:mouseup"   , b  => Scene.__mouseUp__  (Stage.__stage__.scene, b))
+Event.on("mouse:mousedown" , b  => Scene.__mouseDown__(Stage.__stage__.scene, b))
+Event.on("mouse:mousemove" , v  => Scene.__mouseMove__(Stage.__stage__.scene, v))
+
+Event.on("native:blur", () => {
+  Keyboard.__blur__()
+  Mouse   .__blur__()
+})
 
 const hg = {
   Version,
@@ -1328,10 +995,41 @@ const hg = {
 
   Id,
   Event,
-  Stage,
   Scene,
+  Stage,
 
   Keyboard,
-}
+  Mouse   ,
 
-window.hg = hg
+  Asset,
+  Atlas,
+
+  // alias
+
+  vec2: Vector2.new,
+  vec3: Vector3.new,
+  vec4: Vector4.new,
+  id  : Id.acquire,
+  on  : Event.on  ,
+  off : Event.off ,
+  emit: Event.emit,
+  once: Event.once,
+
+  setup: Stage.setup,
+  cue  : Stage.cue  ,
+
+  loadImage: Asset.loadImage,
+  loadAudio: Asset.loadAudio,
+  loadText : Asset.loadText ,
+  loadBlob : Asset.loadBlob ,
+  loadJson : Asset.loadJson ,
+  load     : Asset.load     ,
+  loadAll  : Asset.loadAll  ,
+
+  image: Asset.Image,
+  audio: Asset.Audio,
+  text : Asset.Text ,
+  blob : Asset.Blob ,
+  json : Asset.Json ,
+
+}

@@ -5,14 +5,37 @@
   </head>
   <body>
     <script src="./hg.js"></script>
-    <script>
-      const stage = hg.Stage.new({w: 256, h: 256, fps: 60})
+    <script type="module">
 
-      hg.Stage.setScene(stage, hg.Scene.new({
-        onUpdate() {
-          console.log(hg.Keyboard.isKeyDown(stage.keyboard, "a"))
+      hg.setup({
+        w: 64,
+        h: 64,
+        si: 1,
+        vbg: "black",
+      })
+
+
+      
+      const assets = [
+        hg.image("./kenney.png", "kenney")
+      ]
+
+      await hg.loadAll(...assets)
+
+      const tiles = hg.Atlas.from("kenney", 22, 49)
+
+
+
+      const scene = hg.Scene.new({
+        onRender(c) {
+          for(let x = 0; x < 64; x += 16)
+            for(let y = 0; y < 64; y += 16)
+              hg.Atlas.draw(c, tiles, 1, {x, y})
         }
-      }))
+      })
+
+      hg.cue(scene)
+
       
     </script>
   </body>
