@@ -1,0 +1,9 @@
+{
+  "name": "hg",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "pretest": "npm run build",
+    "test": "node --test hg.test.cjs hg.typed.test.cjs"
+  }
+}

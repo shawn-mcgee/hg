@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "target": "ES2022",
+    "moduleDetection": "legacy"
+  },
+  "include": [
+    "hg.js",
+    "lib/**/*.js",
+    "hg*.test.cjs",
+    "scripts/**/*.cjs"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
+}
